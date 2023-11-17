@@ -2,6 +2,7 @@ package gol
 
 import (
 	"flag"
+	"fmt"
 	"net/rpc"
 	"strconv"
 	"uk.ac.bris.cs/gameoflife/stubs"
@@ -48,6 +49,8 @@ func makeCall(client *rpc.Client, p Params, c distributorChannels) {
 	request := stubs.Request{Turns: turns, ImageWidth: width, ImageHeight: height, World: world}
 	response := new(stubs.Response)
 	client.Call(stubs.Handler, request, response)
+
+	fmt.Println(response)
 
 	// Report the final state using FinalTurnCompleteEvent.
 	c.events <- FinalTurnComplete{CompletedTurns: p.Turns}

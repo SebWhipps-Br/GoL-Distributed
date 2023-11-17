@@ -79,8 +79,7 @@ type GameOfLifeOperations struct {
 
 // still working on
 func (g *GameOfLifeOperations) UpdateWorld(req stubs.Request, res *stubs.Response) (err error) {
-
-	distributor(req.Turns, req.World, req.ImageWidth, req.ImageHeight)
+	res.NextWorld = distributor(req.Turns, req.World, req.ImageWidth, req.ImageHeight)
 	return
 }
 

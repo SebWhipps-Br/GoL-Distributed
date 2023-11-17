@@ -6,7 +6,7 @@ var Handler = "GameOfLifeOperations.UpdateWorld"
 
 // final world returned
 type Response struct {
-	nextWorld [][]byte
+	NextWorld [][]byte
 }
 
 // contains num of turns, 2d slice (initial state), size of image
