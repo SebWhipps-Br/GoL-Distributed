@@ -18,6 +18,20 @@ type distributorChannels struct {
 }
 
 /*
+outputWorld sends the image out byte by byte via the appropriate channels
+*/
+func outputWorld(height, width, turn int, world [][]byte, filename string, c distributorChannels) {
+	c.ioCommand <- ioOutput
+	c.ioFilename <- fmt.Sprintf("%sx%d", filename, turn)
+	for i := 0; i < height; i++ { // each row
+		for j := 0; j < width; j++ { //each column
+			c.ioOutput <- world[i][j]
+		}
+	}
+	c.events <- ImageOutputComplete{CompletedTurns: turn, Filename: filename}
+}
+
+/*
 makeWorld is a way to create empty worlds (or parts of worlds)
 */
 func makeWorld(height, width int) [][]byte { //[][]byte is a 2d slice. represents a grid or matrix where each element is a byte
@@ -50,10 +64,14 @@ func makeCall(client *rpc.Client, p Params, c distributorChannels) {
 	response := new(stubs.Response)
 	client.Call(stubs.Handler, request, response)
 
-	fmt.Println(response)
+	fmt.Println(response.NextWorld)
 
 	// Report the final state using FinalTurnCompleteEvent.
 	c.events <- FinalTurnComplete{CompletedTurns: p.Turns}
+
+	//copy nextWorld into a local variable
+
+	outputWorld(p.ImageHeight, p.ImageWidth, p.Turns, response.NextWorld, filename, c)
 
 	// Make sure that the Io has finished any output before exiting.
 	c.ioCommand <- ioCheckIdle
