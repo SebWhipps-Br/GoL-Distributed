@@ -5,9 +5,8 @@ import (
 	"math/rand"
 	"net"
 	"net/rpc"
-	"stubs/stubs"
-
 	"time"
+	"uk.ac.bris.cs/gameoflife/stubs"
 )
 
 //server is the worker
