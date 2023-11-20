@@ -50,34 +50,40 @@ func distributor(Turns int, World []util.BitArray, Width int, Height int) []util
 	nextWorld := makeWorld(Height, Width)
 
 	turn := 0
+	halt := false
 	//Execute all turns of the Game of Life.
-	for turn < Turns {
-		//iterate through each cell in the current world
-		for y := 0; y < Height; y++ {
-			for x := 0; x < Width; x++ {
+	for turn < Turns && !halt {
+		select {
+		//case key := <-keyPresses:
+		//keypressed
+		default:
+			//iterate through each cell in the current world
+			for y := 0; y < Height; y++ {
+				for x := 0; x < Width; x++ {
 
-				liveNeighbors := countLiveNeighbors(x, y, Width, Height, World)
-				if World[y].GetBit(x) == Alive { //apply GoL rules
-					//less than 2 live neighbours
-					if liveNeighbors < 2 || liveNeighbors > 3 {
-						nextWorld[y].SetBit(x, Dead)
-					} else {
-						nextWorld[y].SetBit(x, Alive)
-					}
-				} else { //any dead cell with exactly three live neighbours becomes alive
-					if liveNeighbors == 3 {
-						nextWorld[y].SetBit(x, Alive)
-					} else {
-						nextWorld[y].SetBit(x, Dead)
+					liveNeighbors := countLiveNeighbors(x, y, Width, Height, World)
+					if World[y].GetBit(x) == Alive { //apply GoL rules
+						//less than 2 live neighbours
+						if liveNeighbors < 2 || liveNeighbors > 3 {
+							nextWorld[y].SetBit(x, Dead)
+						} else {
+							nextWorld[y].SetBit(x, Alive)
+						}
+					} else { //any dead cell with exactly three live neighbours becomes alive
+						if liveNeighbors == 3 {
+							nextWorld[y].SetBit(x, Alive)
+						} else {
+							nextWorld[y].SetBit(x, Dead)
+						}
 					}
 				}
 			}
-		}
-		for row := range World { // copy the inner slices of the world
-			copy(World[row], nextWorld[row])
-		}
+			for row := range World { // copy the inner slices of the world
+				copy(World[row], nextWorld[row])
+			}
 
-		turn++
+			turn++
+		}
 	}
 	return World
 }
