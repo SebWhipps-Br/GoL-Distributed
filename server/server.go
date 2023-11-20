@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"math/rand"
 	"net"
 	"net/rpc"
@@ -31,13 +32,14 @@ func makeWorld(height, width int) []util.BitArray {
 // AliveCount counts the number of alive cells in the world, and returns this as an int
 func AliveCount(world []util.BitArray, turn int) int {
 	count := 0
-	for y, row := range world {
+	for _, row := range world {
 		for x := 0; x < row.Len(); x++ {
 			if row.GetBit(x) == Alive {
 				count++
 			}
 		}
 	}
+	//fmt.Println(count)
 	return count
 }
 
@@ -95,7 +97,8 @@ func distributor(Turns int, World []util.BitArray, Width int, Height int) []util
 				copy(World[row], nextWorld[row])
 			}
 
-			cellsCount := AliveCount(World, Turns)
+			cellCount := AliveCount(World, Turns)
+			fmt.Println(cellCount)
 
 			turn++
 		}
@@ -113,8 +116,11 @@ func (g *GameOfLifeOperations) UpdateWorld(req stubs.Request, res *stubs.Respons
 	return
 }
 
-func (g *GameOfLifeOperations) Interrupt(req stubs.Request, res *stubs.Response) (err error) {
-
+func (g *GameOfLifeOperations) Interrupt(req stubs.Interrupt, res *stubs.InterruptResponse) (err error) {
+	if req.Key == 't' {
+		fmt.Println("timer")
+	}
+	return
 }
 
 func main() {

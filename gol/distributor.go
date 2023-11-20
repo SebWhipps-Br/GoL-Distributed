@@ -88,14 +88,23 @@ func makeCall(client *rpc.Client, p Params, c distributorChannels) {
 		err := client.Call(stubs.Handler, request, response)
 		done <- err
 	}()
-	for {
+	exit := false
+	for !exit {
 		select {
 		case err := <-done:
 			if err != nil {
 				fmt.Println(err)
 			}
+			exit = true
 		case <-timer.C:
-
+			request := stubs.Interrupt{Key: 't'}
+			response := new(stubs.InterruptResponse)
+			err := client.Call(stubs.InterruptHandler, request, response)
+			if err != nil {
+				fmt.Println(err)
+			}
+			fmt.Println(response.AliveCellsCount)
+			timer.Reset(2 * time.Second)
 		}
 	}
 
