@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"net"
 	"net/rpc"
+	"sync"
 	"time"
 	"uk.ac.bris.cs/gameoflife/stubs"
 	"uk.ac.bris.cs/gameoflife/util"
@@ -17,6 +18,23 @@ const (
 	Alive = true
 	Dead  = false
 )
+
+var (
+	globalChannel  chan interface{} // Global channel for communication
+	globalChannelM sync.Mutex       // Mutex for safe access to the global channel
+)
+
+// Result represents the result of the distributor function
+type Result struct {
+	World         []util.BitArray
+	AliveCells    int
+	InterruptData interface{}
+}
+
+type GameOfLifeOperations struct {
+	World         []util.BitArray
+	ResultChannel chan Result
+}
 
 /*
 makeWorld is a way to create empty worlds (or parts of worlds)
@@ -60,7 +78,7 @@ func countLiveNeighbors(x, y, w int, h int, world []util.BitArray) int {
 }
 
 // 1 worker to start with
-func distributor(Turns int, World []util.BitArray, Width int, Height int) []util.BitArray {
+func distributor(Turns int, World []util.BitArray, Width int, Height int, resultChannel chan<- Result) {
 
 	nextWorld := makeWorld(Height, Width)
 
@@ -70,6 +88,17 @@ func distributor(Turns int, World []util.BitArray, Width int, Height int) []util
 	for turn < Turns && !halt {
 		select {
 		//case key := <-keyPresses:
+		case interruptData := <-globalChannel:
+			globalChannelM.Lock()
+			fmt.Printf("Received interrupt data: %v\n", interruptData)
+			globalChannelM.Unlock()
+
+			if interruptData == 't' {
+				aliveCells := AliveCount(World, Turns)
+				result := Result{World: World, AliveCells: aliveCells}
+				resultChannel <- result
+			}
+
 		//keypressed
 		default:
 			//iterate through each cell in the current world
@@ -103,23 +132,27 @@ func distributor(Turns int, World []util.BitArray, Width int, Height int) []util
 			turn++
 		}
 	}
-	return World
-}
-
-type GameOfLifeOperations struct {
-	World []util.BitArray
+	aliveCells := AliveCount(World, Turns)
+	result := Result{World: World, AliveCells: aliveCells}
+	resultChannel <- result
 }
 
 // still working on
 func (g *GameOfLifeOperations) UpdateWorld(req stubs.Request, res *stubs.Response) (err error) {
-	res.NextWorld = distributor(req.Turns, req.World, req.ImageWidth, req.ImageHeight)
+	go distributor(req.Turns, req.World, req.ImageWidth, req.ImageHeight, g.ResultChannel)
+	// Wait for the result from the distributor
+	result := <-g.ResultChannel
+	res.NextWorld = result.World
 	return
+
 }
 
 func (g *GameOfLifeOperations) Interrupt(req stubs.Interrupt, res *stubs.InterruptResponse) (err error) {
 	if req.Key == 't' {
-		fmt.Println("timer")
+		response := <-g.ResultChannel // Wait for alive cells count
+		res.AliveCellsCount = response.AliveCells
 	}
+	//want to get number of alive cells
 	return
 }
 
