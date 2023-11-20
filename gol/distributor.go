@@ -1,7 +1,6 @@
 package gol
 
 import (
-	"flag"
 	"fmt"
 	"net/rpc"
 	"strconv"
@@ -80,7 +79,10 @@ func makeCall(client *rpc.Client, p Params, c distributorChannels) {
 
 	request := stubs.Request{Turns: turns, ImageWidth: width, ImageHeight: height, World: world}
 	response := new(stubs.Response)
-	client.Call(stubs.Handler, request, response)
+	err := client.Call(stubs.Handler, request, response)
+	if err != nil {
+		fmt.Println(err)
+	}
 
 	// Report the final state using FinalTurnCompleteEvent.
 	c.events <- FinalTurnComplete{CompletedTurns: p.Turns, Alive: finalAliveCount(response.NextWorld)}
@@ -98,10 +100,16 @@ func makeCall(client *rpc.Client, p Params, c distributorChannels) {
 
 // distributor divides the work between workers and interacts with other goroutines.
 func distributor(p Params, c distributorChannels) {
-	server := flag.String("server", "127.0.0.1:8030", "IP:port string to connect to as server")
-	flag.Parse()
-	client, _ := rpc.Dial("tcp", *server)
-	defer client.Close()
+	serverAddress := "127.0.0.1:8030"
+	client, err := rpc.Dial("tcp", serverAddress)
+	if err != nil {
+		fmt.Println(err)
+	}
+	defer func(client *rpc.Client) {
+		err := client.Close()
+		if err != nil {
+			fmt.Println(err)
+		}
+	}(client)
 	makeCall(client, p, c)
-
 }
