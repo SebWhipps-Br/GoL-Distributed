@@ -5,6 +5,7 @@ import "uk.ac.bris.cs/gameoflife/util"
 // capital letters for exported types
 // game of life operations and processed turns
 var Handler = "GameOfLifeOperations.UpdateWorld"
+var InterruptHandler = "GameOfLifeOperations.Interrupt"
 
 // final world returned
 type Response struct {
@@ -17,4 +18,12 @@ type Request struct {
 	ImageWidth  int
 	ImageHeight int
 	World       []util.BitArray
+}
+
+type Interrupt struct {
+	Key rune
+}
+
+type InterruptResponse struct {
+	AliveCellsCount int
 }

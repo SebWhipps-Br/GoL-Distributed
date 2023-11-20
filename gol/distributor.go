@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/rpc"
 	"strconv"
+	"time"
 	"uk.ac.bris.cs/gameoflife/stubs"
 	"uk.ac.bris.cs/gameoflife/util"
 )
@@ -59,7 +60,11 @@ func makeWorld(height, width int) []util.BitArray {
 	}
 	return world
 }
+
 func makeCall(client *rpc.Client, p Params, c distributorChannels) {
+	timer := time.NewTimer(2 * time.Second)
+	done := make(chan error)
+
 	filename := strconv.Itoa(p.ImageWidth) + "x" + strconv.Itoa(p.ImageHeight)
 
 	// Create the world and nextWorld as 2D slices
@@ -79,9 +84,19 @@ func makeCall(client *rpc.Client, p Params, c distributorChannels) {
 
 	request := stubs.Request{Turns: turns, ImageWidth: width, ImageHeight: height, World: world}
 	response := new(stubs.Response)
-	err := client.Call(stubs.Handler, request, response)
-	if err != nil {
-		fmt.Println(err)
+	go func() {
+		err := client.Call(stubs.Handler, request, response)
+		done <- err
+	}()
+	for {
+		select {
+		case err := <-done:
+			if err != nil {
+				fmt.Println(err)
+			}
+		case <-timer.C:
+
+		}
 	}
 
 	// Report the final state using FinalTurnCompleteEvent.

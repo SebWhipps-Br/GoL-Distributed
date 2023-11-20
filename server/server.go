@@ -28,6 +28,19 @@ func makeWorld(height, width int) []util.BitArray {
 	return world
 }
 
+// AliveCount counts the number of alive cells in the world, and returns this as an int
+func AliveCount(world []util.BitArray, turn int) int {
+	count := 0
+	for y, row := range world {
+		for x := 0; x < row.Len(); x++ {
+			if row.GetBit(x) == Alive {
+				count++
+			}
+		}
+	}
+	return count
+}
+
 // countLiveNeighbors calculates the number of live neighbors around a given cell.
 func countLiveNeighbors(x, y, w int, h int, world []util.BitArray) int {
 	liveNeighbors := 0
@@ -82,6 +95,8 @@ func distributor(Turns int, World []util.BitArray, Width int, Height int) []util
 				copy(World[row], nextWorld[row])
 			}
 
+			cellsCount := AliveCount(World, Turns)
+
 			turn++
 		}
 	}
@@ -96,6 +111,10 @@ type GameOfLifeOperations struct {
 func (g *GameOfLifeOperations) UpdateWorld(req stubs.Request, res *stubs.Response) (err error) {
 	res.NextWorld = distributor(req.Turns, req.World, req.ImageWidth, req.ImageHeight)
 	return
+}
+
+func (g *GameOfLifeOperations) Interrupt(req stubs.Request, res *stubs.Response) (err error) {
+
 }
 
 func main() {
