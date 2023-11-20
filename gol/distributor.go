@@ -6,6 +6,7 @@ import (
 	"net/rpc"
 	"strconv"
 	"uk.ac.bris.cs/gameoflife/stubs"
+	"uk.ac.bris.cs/gameoflife/util"
 )
 
 type distributorChannels struct {
@@ -29,6 +30,19 @@ func outputWorld(height, width, turn int, world [][]byte, filename string, c dis
 		}
 	}
 	c.events <- ImageOutputComplete{CompletedTurns: turn, Filename: filename}
+}
+
+// finalAliveCount gives a slice of util.Cell containing the coordinates of all the alive cells
+func finalAliveCount(world [][]byte) []util.Cell {
+	var aliveCells []util.Cell
+	for y, row := range world {
+		for x := 0; x < len(row); x++ {
+			if row[x] == 255 {
+				aliveCells = append(aliveCells, util.Cell{X: x, Y: y})
+			}
+		}
+	}
+	return aliveCells
 }
 
 /*
@@ -64,19 +78,15 @@ func makeCall(client *rpc.Client, p Params, c distributorChannels) {
 	response := new(stubs.Response)
 	client.Call(stubs.Handler, request, response)
 
-	fmt.Println(response.NextWorld)
-
 	// Report the final state using FinalTurnCompleteEvent.
-	c.events <- FinalTurnComplete{CompletedTurns: p.Turns}
-
-	//copy nextWorld into a local variable
+	c.events <- FinalTurnComplete{CompletedTurns: p.Turns, Alive: finalAliveCount(response.NextWorld)}
 
 	outputWorld(p.ImageHeight, p.ImageWidth, p.Turns, response.NextWorld, filename, c)
 
 	// Make sure that the Io has finished any output before exiting.
 	c.ioCommand <- ioCheckIdle
 	<-c.ioIdle
-
+	c.events <- StateChange{p.Turns, Quitting}
 	// Close the channel to stop the SDL goroutine gracefully. Removing may cause deadlock.
 	close(c.events)
 
