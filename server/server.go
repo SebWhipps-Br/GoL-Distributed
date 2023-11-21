@@ -86,7 +86,7 @@ func distributor(Turns int, Width int, Height int, g *GameOfLifeOperations) {
 	halt := false
 	//Execute all turns of the Game of Life.
 	for g.CompletedTurns < Turns && !halt {
-
+		globalChannelM.Lock()
 		//iterate through each cell in the current world
 		for y := 0; y < Height; y++ {
 			for x := 0; x < Width; x++ {
@@ -113,6 +113,7 @@ func distributor(Turns int, Width int, Height int, g *GameOfLifeOperations) {
 		}
 
 		g.CompletedTurns++
+		globalChannelM.Unlock()
 	}
 
 	aliveCells := AliveCount(g.World, Turns)
