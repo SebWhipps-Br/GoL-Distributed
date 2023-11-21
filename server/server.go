@@ -112,6 +112,7 @@ func executeTurns(Turns int, Width int, Height int, g *GameOfLifeOperations) {
 	g.ResultChannel <- result
 }
 
+// UpdateWorld is called to Run game of life
 func (g *GameOfLifeOperations) UpdateWorld(req stubs.Request, res *stubs.Response) (err error) {
 	g.CompletedTurns = 0
 	g.World = req.World

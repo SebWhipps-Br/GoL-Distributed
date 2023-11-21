@@ -97,15 +97,15 @@ func makeWorld(height, width int) []util.BitArray {
 }
 
 // exit saves the world in its current state and ensures that the program stops gracefully
-func exit(p Params, c distributorChannels, turn int, world []util.BitArray, filename string) {
+func exit(p Params, c distributorChannels, turnsCompleted int, world []util.BitArray, filename string) {
 	// Report the final state using FinalTurnCompleteEvent.
-	c.events <- FinalTurnComplete{CompletedTurns: turn, Alive: finalAliveCount(world)}
-	outputWorld(p.ImageHeight, p.ImageWidth, turn, world, filename, c)
+	c.events <- FinalTurnComplete{CompletedTurns: turnsCompleted, Alive: finalAliveCount(world)}
+	outputWorld(p.ImageHeight, p.ImageWidth, turnsCompleted, world, filename, c)
 
 	// Make sure that the Io has finished any output before exiting.
 	c.ioCommand <- ioCheckIdle
 	<-c.ioIdle
-	c.events <- StateChange{turn, Quitting}
+	c.events <- StateChange{turnsCompleted, Quitting}
 	// Close the channel to stop the SDL goroutine gracefully. Removing may cause deadlock.
 	close(c.events)
 }
