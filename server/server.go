@@ -80,7 +80,7 @@ func countLiveNeighbors(x, y, w int, h int, world []util.BitArray) int {
 }
 
 // 1 worker to start with
-func distributor(Turns int, World []util.BitArray, Width int, Height int, resultChannel chan<- Result, g *GameOfLifeOperations) {
+func distributor(Turns int, Width int, Height int, resultChannel chan<- Result, g *GameOfLifeOperations) {
 
 	nextWorld := makeWorld(Height, Width)
 
@@ -109,8 +109,8 @@ func distributor(Turns int, World []util.BitArray, Width int, Height int, result
 			for y := 0; y < Height; y++ {
 				for x := 0; x < Width; x++ {
 
-					liveNeighbors := countLiveNeighbors(x, y, Width, Height, World)
-					if World[y].GetBit(x) == Alive { //apply GoL rules
+					liveNeighbors := countLiveNeighbors(x, y, Width, Height, g.World)
+					if g.World[y].GetBit(x) == Alive { //apply GoL rules
 						//less than 2 live neighbours
 						if liveNeighbors < 2 || liveNeighbors > 3 {
 							nextWorld[y].SetBit(x, Dead)
@@ -126,26 +126,23 @@ func distributor(Turns int, World []util.BitArray, Width int, Height int, result
 					}
 				}
 			}
-			for row := range World { // copy the inner slices of the world
-				copy(World[row], nextWorld[row])
+			for row := range g.World { // copy the inner slices of the world
 				copy(g.World[row], nextWorld[row])
 			}
-
-			//cellCount := AliveCount(World, Turns)
-			//fmt.Println(cellCount)
 
 			g.CompletedTurns++
 		}
 	}
-	aliveCells := AliveCount(World, Turns)
-	result := Result{World: World, AliveCells: aliveCells}
+	aliveCells := AliveCount(g.World, Turns)
+	result := Result{World: g.World, AliveCells: aliveCells}
 	resultChannel <- result
 }
 
 // still working on
 func (g *GameOfLifeOperations) UpdateWorld(req stubs.Request, res *stubs.Response) (err error) {
 	g.CompletedTurns = 0
-	go distributor(req.Turns, req.World, req.ImageWidth, req.ImageHeight, g.ResultChannel, g)
+	g.World = req.World
+	go distributor(req.Turns, req.ImageWidth, req.ImageHeight, g.ResultChannel, g)
 	// Wait for the result from the distributor
 	result := <-g.ResultChannel
 	res.NextWorld = result.World
