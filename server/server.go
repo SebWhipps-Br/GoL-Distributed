@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"math/rand"
 	"net"
 	"net/rpc"
@@ -19,17 +20,15 @@ const (
 )
 
 var (
-	interuptChannel chan rune  // Global channel for communication
-	globalChannelM  sync.Mutex // Mutex for safe access to the global channel
+	globalChannelM sync.Mutex // Mutex for safe access to the global channel
 
 	responseChannel chan int
 )
 
 // Result represents the result of the distributor function
 type Result struct {
-	World         []util.BitArray
-	AliveCells    int
-	InterruptData interface{}
+	World      []util.BitArray
+	AliveCells int
 }
 
 type GameOfLifeOperations struct {
@@ -50,7 +49,7 @@ func makeWorld(height, width int) []util.BitArray {
 }
 
 // AliveCount counts the number of alive cells in the world, and returns this as an int
-func AliveCount(world []util.BitArray, turn int) int {
+func AliveCount(world []util.BitArray) int {
 	count := 0
 	for _, row := range world {
 		for x := 0; x < row.Len(); x++ {
@@ -82,10 +81,11 @@ func countLiveNeighbors(x, y, w int, h int, world []util.BitArray) int {
 // 1 worker to start with
 func distributor(Turns int, Width int, Height int, g *GameOfLifeOperations) {
 	nextWorld := makeWorld(Height, Width)
-
+	fmt.Println('a')
 	//Execute all turns of the Game of Life.
 	for g.CompletedTurns < Turns {
-		//globalChannelM.Lock()
+		fmt.Println("g.CompletedTurns:", g.CompletedTurns)
+		//globalChannelM.Unlock()
 		//iterate through each cell in the current world
 		for y := 0; y < Height; y++ {
 			for x := 0; x < Width; x++ {
@@ -106,6 +106,7 @@ func distributor(Turns int, Width int, Height int, g *GameOfLifeOperations) {
 				}
 			}
 		}
+		//globalChannelM.Lock()
 		for row := range g.World { // copy the inner slices of the world
 			copy(g.World[row], nextWorld[row])
 		}
@@ -113,10 +114,10 @@ func distributor(Turns int, Width int, Height int, g *GameOfLifeOperations) {
 		g.CompletedTurns++
 		//globalChannelM.Unlock()
 	}
-
-	aliveCells := AliveCount(g.World, Turns)
-	result := Result{World: g.World, AliveCells: aliveCells}
+	fmt.Println("done 1")
+	result := Result{World: g.World, AliveCells: AliveCount(g.World)}
 	g.ResultChannel <- result
+	fmt.Println("done 2")
 }
 
 // still working on
@@ -127,15 +128,16 @@ func (g *GameOfLifeOperations) UpdateWorld(req stubs.Request, res *stubs.Respons
 	// Wait for the result from the distributor
 	result := <-g.ResultChannel
 	res.NextWorld = result.World
+	fmt.Println("done 3")
 	return
 
 }
 
 func (g *GameOfLifeOperations) Interrupt(req stubs.Interrupt, res *stubs.InterruptResponse) (err error) {
-	globalChannelM.Lock()
-	res.AliveCellsCount = AliveCount(g.World, g.CompletedTurns)
+	//globalChannelM.Lock()
+	res.AliveCellsCount = AliveCount(g.World)
 	res.CompletedTurns = g.CompletedTurns
-	globalChannelM.Unlock()
+	//globalChannelM.Unlock()
 	return
 }
 
