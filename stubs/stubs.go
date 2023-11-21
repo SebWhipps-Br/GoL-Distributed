@@ -5,7 +5,8 @@ import "uk.ac.bris.cs/gameoflife/util"
 // capital letters for exported types
 // game of life operations and processed turns
 var Handler = "GameOfLifeOperations.UpdateWorld"
-var InterruptHandler = "GameOfLifeOperations.Interrupt"
+var GetAliveCount = "GameOfLifeOperations.GetAliveCount"
+var GetCurrentWorld = "GameOfLifeOperations.GetCurrentWorld"
 
 // final world returned
 type Response struct {
@@ -20,11 +21,12 @@ type Request struct {
 	World       []util.BitArray
 }
 
-type Interrupt struct {
-	Key rune
-}
-
-type InterruptResponse struct {
+type AliveCellsResponse struct {
 	AliveCellsCount int
 	CompletedTurns  int
+}
+
+type CurrentWorldResponse struct {
+	World          []util.BitArray
+	CompletedTurns int
 }

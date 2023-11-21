@@ -50,6 +50,36 @@ func finalAliveCount(world []util.BitArray) []util.Cell {
 	return aliveCells
 }
 
+// handleKeyPresses takes a keypress and acts accordingly, it returns a boolean value indicting whether the program should halt
+func handleKeyPresses(key rune, keyPresses <-chan rune, p Params, c distributorChannels, turn int, client *rpc.Client, filename string) {
+
+	switch key {
+	case 's':
+		worldResponse := new(stubs.CurrentWorldResponse)
+		err := client.Call(stubs.GetCurrentWorld, struct{}{}, worldResponse)
+		if err != nil {
+			fmt.Println(err)
+		}
+		fmt.Println(worldResponse.CompletedTurns)
+		outputWorld(p.ImageHeight, p.ImageWidth, worldResponse.CompletedTurns, worldResponse.World, filename, c)
+	case 'q':
+		// stops the server running,
+		// ends the client program
+
+	case 'k':
+		// shut down server cleanly
+		// output
+	case 'p':
+		pause := true
+		for pause {
+			select {
+			case k := <-keyPresses:
+				pause = k != 'p'
+			}
+		}
+	}
+}
+
 /*
 makeWorld is a way to create empty worlds (or parts of worlds)
 */
@@ -112,16 +142,21 @@ func makeCall(client *rpc.Client, p Params, c distributorChannels, keyPresses <-
 			}
 			halt = true
 		case k := <-keyPresses:
-			request := stubs.Interrupt{Key: k}
-			response := new(stubs.InterruptResponse)
-			err := client.Call(stubs.InterruptHandler, request, response)
-			if err != nil {
-				fmt.Println(err)
-			}
+			/*
+				request := stubs.Interrupt{Key: k}
+				response := new(stubs.AliveCellsResponse)
+				err := client.Call(stubs.GetAliveCount, request, response)
+				if err != nil {
+					fmt.Println(err)
+				}
+
+			*/
+			handleKeyPresses(k, keyPresses, p, c, turns, client, filename)
+
 		case <-timer.C:
-			request := stubs.Interrupt{Key: 't'}
-			response := new(stubs.InterruptResponse)
-			err := client.Call(stubs.InterruptHandler, request, response)
+
+			response := new(stubs.AliveCellsResponse)
+			err := client.Call(stubs.GetAliveCount, struct{}{}, response)
 			if err != nil {
 				fmt.Println(err)
 			}

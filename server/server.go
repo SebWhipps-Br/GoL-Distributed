@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"math/rand"
 	"net"
 	"net/rpc"
@@ -20,12 +19,10 @@ const (
 )
 
 var (
-	globalChannelM sync.Mutex // Mutex for safe access to the global channel
-
-	responseChannel chan int
+	mutex sync.Mutex // Mutex for safe access to the global channel
 )
 
-// Result represents the result of the distributor function
+// Result represents the result of the executeTurns function
 type Result struct {
 	World      []util.BitArray
 	AliveCells int
@@ -79,13 +76,11 @@ func countLiveNeighbors(x, y, w int, h int, world []util.BitArray) int {
 }
 
 // 1 worker to start with
-func distributor(Turns int, Width int, Height int, g *GameOfLifeOperations) {
+func executeTurns(Turns int, Width int, Height int, g *GameOfLifeOperations) {
 	nextWorld := makeWorld(Height, Width)
-	fmt.Println('a')
 	//Execute all turns of the Game of Life.
 	for g.CompletedTurns < Turns {
-		fmt.Println("g.CompletedTurns:", g.CompletedTurns)
-		//globalChannelM.Unlock()
+		//mutex.Unlock()
 		//iterate through each cell in the current world
 		for y := 0; y < Height; y++ {
 			for x := 0; x < Width; x++ {
@@ -106,39 +101,43 @@ func distributor(Turns int, Width int, Height int, g *GameOfLifeOperations) {
 				}
 			}
 		}
-		//globalChannelM.Lock()
+		//mutex.Lock()
 		for row := range g.World { // copy the inner slices of the world
 			copy(g.World[row], nextWorld[row])
 		}
 
 		g.CompletedTurns++
-		//globalChannelM.Unlock()
+		//mutex.Unlock()
 	}
-	fmt.Println("done 1")
 	result := Result{World: g.World, AliveCells: AliveCount(g.World)}
-	fmt.Println("abc")
 	g.ResultChannel <- result
-	fmt.Println("done 2")
 }
 
-// still working on
 func (g *GameOfLifeOperations) UpdateWorld(req stubs.Request, res *stubs.Response) (err error) {
 	g.CompletedTurns = 0
 	g.World = req.World
-	go distributor(req.Turns, req.ImageWidth, req.ImageHeight, g)
-	// Wait for the result from the distributor
+	go executeTurns(req.Turns, req.ImageWidth, req.ImageHeight, g)
+	// Wait for the result from the executeTurns
 	result := <-g.ResultChannel
 	res.NextWorld = result.World
-	fmt.Println("done 3")
 	return
 
 }
 
-func (g *GameOfLifeOperations) Interrupt(req stubs.Interrupt, res *stubs.InterruptResponse) (err error) {
-	//globalChannelM.Lock()
+// GetAliveCount is called when the 2-second timer calls it from the client
+func (g *GameOfLifeOperations) GetAliveCount(_ struct{}, res *stubs.AliveCellsResponse) (err error) {
+	//mutex.Lock()
 	res.AliveCellsCount = AliveCount(g.World)
 	res.CompletedTurns = g.CompletedTurns
-	//globalChannelM.Unlock()
+	//mutex.Unlock()
+	return
+}
+
+func (g *GameOfLifeOperations) GetCurrentWorld(_ struct{}, res *stubs.CurrentWorldResponse) (err error) {
+	//mutex.Lock()
+	res.World = g.World
+	res.CompletedTurns = g.CompletedTurns
+	//mutex.Unlock()
 	return
 }
 
