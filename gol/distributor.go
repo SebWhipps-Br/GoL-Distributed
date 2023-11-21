@@ -61,7 +61,21 @@ func makeWorld(height, width int) []util.BitArray {
 	return world
 }
 
-func makeCall(client *rpc.Client, p Params, c distributorChannels) {
+// exit saves the world in its current state and ensures that the program stops gracefully
+func exit(p Params, c distributorChannels, turn int, world []util.BitArray, filename string) {
+	// Report the final state using FinalTurnCompleteEvent.
+	c.events <- FinalTurnComplete{CompletedTurns: turn, Alive: finalAliveCount(world)}
+	outputWorld(p.ImageHeight, p.ImageWidth, turn, world, filename, c)
+
+	// Make sure that the Io has finished any output before exiting.
+	c.ioCommand <- ioCheckIdle
+	<-c.ioIdle
+	c.events <- StateChange{turn, Quitting}
+	// Close the channel to stop the SDL goroutine gracefully. Removing may cause deadlock.
+	close(c.events)
+}
+
+func makeCall(client *rpc.Client, p Params, c distributorChannels, keyPresses <-chan rune) {
 	timer := time.NewTimer(2 * time.Second)
 	done := make(chan error)
 
@@ -88,14 +102,22 @@ func makeCall(client *rpc.Client, p Params, c distributorChannels) {
 		err := client.Call(stubs.Handler, request, response)
 		done <- err
 	}()
-	exit := false
-	for !exit {
+
+	halt := false
+	for !halt {
 		select {
 		case err := <-done:
 			if err != nil {
 				fmt.Println(err)
 			}
-			exit = true
+			halt = true
+		case k := <-keyPresses:
+			request := stubs.Interrupt{Key: k}
+			response := new(stubs.InterruptResponse)
+			err := client.Call(stubs.InterruptHandler, request, response)
+			if err != nil {
+				fmt.Println(err)
+			}
 		case <-timer.C:
 			request := stubs.Interrupt{Key: 't'}
 			response := new(stubs.InterruptResponse)
@@ -107,23 +129,11 @@ func makeCall(client *rpc.Client, p Params, c distributorChannels) {
 			timer.Reset(2 * time.Second)
 		}
 	}
-
-	// Report the final state using FinalTurnCompleteEvent.
-	c.events <- FinalTurnComplete{CompletedTurns: p.Turns, Alive: finalAliveCount(response.NextWorld)}
-
-	outputWorld(p.ImageHeight, p.ImageWidth, p.Turns, response.NextWorld, filename, c)
-
-	// Make sure that the Io has finished any output before exiting.
-	c.ioCommand <- ioCheckIdle
-	<-c.ioIdle
-	c.events <- StateChange{p.Turns, Quitting}
-	// Close the channel to stop the SDL goroutine gracefully. Removing may cause deadlock.
-	close(c.events)
-
+	exit(p, c, turns, response.NextWorld, filename)
 }
 
 // distributor divides the work between workers and interacts with other goroutines.
-func distributor(p Params, c distributorChannels) {
+func distributor(p Params, c distributorChannels, keyPresses <-chan rune) {
 	serverAddress := "127.0.0.1:8030"
 	client, err := rpc.Dial("tcp", serverAddress)
 	if err != nil {
@@ -135,5 +145,5 @@ func distributor(p Params, c distributorChannels) {
 			fmt.Println(err)
 		}
 	}(client)
-	makeCall(client, p, c)
+	makeCall(client, p, c, keyPresses)
 }
