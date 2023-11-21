@@ -80,69 +80,51 @@ func countLiveNeighbors(x, y, w int, h int, world []util.BitArray) int {
 }
 
 // 1 worker to start with
-func distributor(Turns int, Width int, Height int, resultChannel chan<- Result, g *GameOfLifeOperations) {
-
+func distributor(Turns int, Width int, Height int, g *GameOfLifeOperations) {
 	nextWorld := makeWorld(Height, Width)
 
 	halt := false
 	//Execute all turns of the Game of Life.
 	for g.CompletedTurns < Turns && !halt {
-		select {
-		/*
-			//case key := <-keyPresses:
-			case interruptData := <-interuptChannel:
-				println('x')
-				//globalChannelM.Lock()
-				fmt.Printf("Received interrupt data: %v\n", interruptData)
-				//globalChannelM.Unlock()
 
-				if interruptData == 't' {
-					aliveCells := AliveCount(World, Turns)
-					result := Result{World: World, AliveCells: aliveCells}
-					resultChannel <- result
-				}
+		//iterate through each cell in the current world
+		for y := 0; y < Height; y++ {
+			for x := 0; x < Width; x++ {
 
-		*/
-		//keypressed
-		default:
-			//iterate through each cell in the current world
-			for y := 0; y < Height; y++ {
-				for x := 0; x < Width; x++ {
-
-					liveNeighbors := countLiveNeighbors(x, y, Width, Height, g.World)
-					if g.World[y].GetBit(x) == Alive { //apply GoL rules
-						//less than 2 live neighbours
-						if liveNeighbors < 2 || liveNeighbors > 3 {
-							nextWorld[y].SetBit(x, Dead)
-						} else {
-							nextWorld[y].SetBit(x, Alive)
-						}
-					} else { //any dead cell with exactly three live neighbours becomes alive
-						if liveNeighbors == 3 {
-							nextWorld[y].SetBit(x, Alive)
-						} else {
-							nextWorld[y].SetBit(x, Dead)
-						}
+				liveNeighbors := countLiveNeighbors(x, y, Width, Height, g.World)
+				if g.World[y].GetBit(x) == Alive { //apply GoL rules
+					//less than 2 live neighbours
+					if liveNeighbors < 2 || liveNeighbors > 3 {
+						nextWorld[y].SetBit(x, Dead)
+					} else {
+						nextWorld[y].SetBit(x, Alive)
+					}
+				} else { //any dead cell with exactly three live neighbours becomes alive
+					if liveNeighbors == 3 {
+						nextWorld[y].SetBit(x, Alive)
+					} else {
+						nextWorld[y].SetBit(x, Dead)
 					}
 				}
 			}
-			for row := range g.World { // copy the inner slices of the world
-				copy(g.World[row], nextWorld[row])
-			}
-
-			g.CompletedTurns++
 		}
+		for row := range g.World { // copy the inner slices of the world
+			copy(g.World[row], nextWorld[row])
+		}
+
+		g.CompletedTurns++
 	}
+
 	aliveCells := AliveCount(g.World, Turns)
 	result := Result{World: g.World, AliveCells: aliveCells}
-	resultChannel <- result
+	g.ResultChannel <- result
 }
 
 // still working on
 func (g *GameOfLifeOperations) UpdateWorld(req stubs.Request, res *stubs.Response) (err error) {
 	g.CompletedTurns = 0
 	g.World = req.World
-	go distributor(req.Turns, req.ImageWidth, req.ImageHeight, g.ResultChannel, g)
+	go distributor(req.Turns, req.ImageWidth, req.ImageHeight, g)
 	// Wait for the result from the distributor
 	result := <-g.ResultChannel
 	res.NextWorld = result.World
@@ -151,27 +133,10 @@ func (g *GameOfLifeOperations) UpdateWorld(req stubs.Request, res *stubs.Respons
 }
 
 func (g *GameOfLifeOperations) Interrupt(req stubs.Interrupt, res *stubs.InterruptResponse) (err error) {
-	/*
-		mutex lock
-		response := alivecells(g.world)
-		mutex unlock
-	*/
-
 	globalChannelM.Lock()
 	res.AliveCellsCount = AliveCount(g.World, g.CompletedTurns)
-
+	res.CompletedTurns = g.CompletedTurns
 	globalChannelM.Unlock()
-	/*
-		fmt.Println("INTERRUPT")
-		fmt.Println("req.Key:", req.Key)
-		if req.Key == 't' {
-			interuptChannel <- 't'
-			fmt.Println('t')
-			res.AliveCellsCount = <-responseChannel
-		}
-		//want to get number of alive cells
-
-	*/
 	return
 }
 

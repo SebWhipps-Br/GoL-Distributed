@@ -26,4 +26,5 @@ type Interrupt struct {
 
 type InterruptResponse struct {
 	AliveCellsCount int
+	CompletedTurns  int
 }

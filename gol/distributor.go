@@ -125,7 +125,7 @@ func makeCall(client *rpc.Client, p Params, c distributorChannels, keyPresses <-
 			if err != nil {
 				fmt.Println(err)
 			}
-			fmt.Println(response.AliveCellsCount)
+			c.events <- AliveCellsCount{CellsCount: response.AliveCellsCount, CompletedTurns: response.CompletedTurns}
 			timer.Reset(2 * time.Second)
 		}
 	}
