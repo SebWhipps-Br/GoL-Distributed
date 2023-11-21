@@ -83,14 +83,12 @@ func countLiveNeighbors(x, y, w int, h int, world []util.BitArray) int {
 func distributor(Turns int, Width int, Height int, g *GameOfLifeOperations) {
 	nextWorld := makeWorld(Height, Width)
 
-	halt := false
 	//Execute all turns of the Game of Life.
-	for g.CompletedTurns < Turns && !halt {
+	for g.CompletedTurns < Turns {
 		globalChannelM.Lock()
 		//iterate through each cell in the current world
 		for y := 0; y < Height; y++ {
 			for x := 0; x < Width; x++ {
-
 				liveNeighbors := countLiveNeighbors(x, y, Width, Height, g.World)
 				if g.World[y].GetBit(x) == Alive { //apply GoL rules
 					//less than 2 live neighbours
