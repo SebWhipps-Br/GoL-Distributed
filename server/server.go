@@ -116,6 +116,7 @@ func distributor(Turns int, Width int, Height int, g *GameOfLifeOperations) {
 	}
 	fmt.Println("done 1")
 	result := Result{World: g.World, AliveCells: AliveCount(g.World)}
+	fmt.Println("abc")
 	g.ResultChannel <- result
 	fmt.Println("done 2")
 }
@@ -145,7 +146,9 @@ func main() {
 	pAddr := flag.String("port", "8030", "Port to listen on")
 	flag.Parse()
 	rand.Seed(time.Now().UnixNano())
-	rpc.Register(&GameOfLifeOperations{})
+	g := new(GameOfLifeOperations)
+	g.ResultChannel = make(chan Result)
+	rpc.Register(g)
 	listener, _ := net.Listen("tcp", ":"+*pAddr)
 	defer listener.Close()
 	rpc.Accept(listener)
