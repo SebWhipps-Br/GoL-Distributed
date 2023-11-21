@@ -78,9 +78,10 @@ func countLiveNeighbors(x, y, w int, h int, world []util.BitArray) int {
 // 1 worker to start with
 func executeTurns(Turns int, Width int, Height int, g *GameOfLifeOperations) {
 	nextWorld := makeWorld(Height, Width)
+	defer mutex.Unlock()
 	//Execute all turns of the Game of Life.
 	for g.CompletedTurns < Turns {
-		//mutex.Unlock()
+		mutex.Lock()
 		//iterate through each cell in the current world
 		for y := 0; y < Height; y++ {
 			for x := 0; x < Width; x++ {
@@ -101,13 +102,11 @@ func executeTurns(Turns int, Width int, Height int, g *GameOfLifeOperations) {
 				}
 			}
 		}
-		//mutex.Lock()
 		for row := range g.World { // copy the inner slices of the world
 			copy(g.World[row], nextWorld[row])
 		}
-
 		g.CompletedTurns++
-		//mutex.Unlock()
+		mutex.Unlock()
 	}
 	result := Result{World: g.World, AliveCells: AliveCount(g.World)}
 	g.ResultChannel <- result
@@ -126,18 +125,18 @@ func (g *GameOfLifeOperations) UpdateWorld(req stubs.Request, res *stubs.Respons
 
 // GetAliveCount is called when the 2-second timer calls it from the client
 func (g *GameOfLifeOperations) GetAliveCount(_ struct{}, res *stubs.AliveCellsResponse) (err error) {
-	//mutex.Lock()
+	mutex.Lock()
 	res.AliveCellsCount = AliveCount(g.World)
 	res.CompletedTurns = g.CompletedTurns
-	//mutex.Unlock()
+	mutex.Unlock()
 	return
 }
 
 func (g *GameOfLifeOperations) GetCurrentWorld(_ struct{}, res *stubs.CurrentWorldResponse) (err error) {
-	//mutex.Lock()
+	mutex.Lock()
 	res.World = g.World
 	res.CompletedTurns = g.CompletedTurns
-	//mutex.Unlock()
+	mutex.Unlock()
 	return
 }
 

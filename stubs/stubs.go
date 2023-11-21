@@ -8,6 +8,8 @@ var Handler = "GameOfLifeOperations.UpdateWorld"
 var GetAliveCount = "GameOfLifeOperations.GetAliveCount"
 var GetCurrentWorld = "GameOfLifeOperations.GetCurrentWorld"
 
+var HaltServer = "GameOfLifeOperations.HaltServer"
+
 // final world returned
 type Response struct {
 	NextWorld []util.BitArray

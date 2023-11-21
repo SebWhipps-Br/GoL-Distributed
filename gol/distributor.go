@@ -51,7 +51,7 @@ func finalAliveCount(world []util.BitArray) []util.Cell {
 }
 
 // handleKeyPresses takes a keypress and acts accordingly, it returns a boolean value indicting whether the program should halt
-func handleKeyPresses(key rune, keyPresses <-chan rune, p Params, c distributorChannels, turn int, client *rpc.Client, filename string) {
+func handleKeyPresses(key rune, keyPresses <-chan rune, p Params, c distributorChannels, client *rpc.Client, filename string) {
 
 	switch key {
 	case 's':
@@ -63,20 +63,25 @@ func handleKeyPresses(key rune, keyPresses <-chan rune, p Params, c distributorC
 		fmt.Println(worldResponse.CompletedTurns)
 		outputWorld(p.ImageHeight, p.ImageWidth, worldResponse.CompletedTurns, worldResponse.World, filename, c)
 	case 'q':
-		// stops the server running,
-		// ends the client program
+
+		// ends the client program without stopping server
+		//server must be able to be called again without failure
 
 	case 'k':
+
 		// shut down server cleanly
 		// output
 	case 'p':
-		pause := true
-		for pause {
-			select {
-			case k := <-keyPresses:
-				pause = k != 'p'
+		/*
+			pause := true
+			for pause {
+				select {
+				case k := <-keyPresses:
+					pause = k != 'p'
+				}
 			}
-		}
+
+		*/
 	}
 }
 
@@ -142,24 +147,10 @@ func makeCall(client *rpc.Client, p Params, c distributorChannels, keyPresses <-
 			}
 			halt = true
 		case k := <-keyPresses:
-			/*
-				request := stubs.Interrupt{Key: k}
-				response := new(stubs.AliveCellsResponse)
-				err := client.Call(stubs.GetAliveCount, request, response)
-				if err != nil {
-					fmt.Println(err)
-				}
-
-			*/
-			handleKeyPresses(k, keyPresses, p, c, turns, client, filename)
-
+			handleKeyPresses(k, keyPresses, p, c, client, filename)
 		case <-timer.C:
-
 			response := new(stubs.AliveCellsResponse)
-			err := client.Call(stubs.GetAliveCount, struct{}{}, response)
-			if err != nil {
-				fmt.Println(err)
-			}
+			client.Call(stubs.GetAliveCount, struct{}{}, response)
 			c.events <- AliveCellsCount{CellsCount: response.AliveCellsCount, CompletedTurns: response.CompletedTurns}
 			timer.Reset(2 * time.Second)
 		}
