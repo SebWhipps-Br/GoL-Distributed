@@ -62,6 +62,15 @@ func getCurrentWorld(client *rpc.Client) *stubs.CurrentWorldResponse {
 	return worldResponse
 }
 
+func regularAliveCount(client *rpc.Client, c distributorChannels) {
+	response := new(stubs.AliveCellsResponse)
+	err := client.Call(stubs.GetAliveCount, struct{}{}, response)
+	if err != nil {
+		fmt.Println(err)
+	}
+	c.events <- AliveCellsCount{CellsCount: response.AliveCellsCount, CompletedTurns: response.CompletedTurns}
+}
+
 // handleKeyPresses takes a keypress and acts accordingly, it returns a boolean value indicting whether the program should halt
 func handleKeyPresses(key rune, keyPresses <-chan rune, p Params, c distributorChannels, client *rpc.Client, filename string) bool {
 	switch key {
@@ -158,9 +167,7 @@ func makeCall(client *rpc.Client, p Params, c distributorChannels, keyPresses <-
 		case k := <-keyPresses:
 			halt = handleKeyPresses(k, keyPresses, p, c, client, filename)
 		case <-timer.C:
-			response := new(stubs.AliveCellsResponse)
-			client.Call(stubs.GetAliveCount, struct{}{}, response)
-			c.events <- AliveCellsCount{CellsCount: response.AliveCellsCount, CompletedTurns: response.CompletedTurns}
+			regularAliveCount(client, c)
 			timer.Reset(2 * time.Second)
 		}
 	}
