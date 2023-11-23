@@ -7,7 +7,6 @@ import "uk.ac.bris.cs/gameoflife/util"
 var Handler = "GameOfLifeOperations.UpdateWorld"
 var GetAliveCount = "GameOfLifeOperations.GetAliveCount"
 var GetCurrentWorld = "GameOfLifeOperations.GetCurrentWorld"
-
 var HaltServer = "GameOfLifeOperations.HaltServer"
 
 // final world returned

@@ -62,7 +62,6 @@ func handleKeyPresses(key rune, keyPresses <-chan rune, p Params, c distributorC
 		}
 		outputWorld(p.ImageHeight, p.ImageWidth, worldResponse.CompletedTurns, worldResponse.World, filename, c)
 	case 'q':
-
 		// ends the client program without stopping the server, must be able to be called again without failure
 
 	case 'k':
@@ -83,6 +82,20 @@ func handleKeyPresses(key rune, keyPresses <-chan rune, p Params, c distributorC
 		}
 		//kill client
 	case 'p':
+		pause := true
+		turnResponse := new(stubs.CurrentWorldResponse)
+		err := client.Call(stubs.GetCurrentWorld, struct{}{}, turnResponse)
+		fmt.Println("Completed Turns when paused: ", turnResponse.CompletedTurns)
+		if err != nil {
+			fmt.Println("err")
+		}
+		for pause {
+			select {
+			case k := <-keyPresses:
+				pause = k != 'p'
+				fmt.Println("Continuing")
+			}
+		}
 	}
 	return false
 }
