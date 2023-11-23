@@ -51,7 +51,7 @@ func finalAliveCount(world []util.BitArray) []util.Cell {
 }
 
 // handleKeyPresses takes a keypress and acts accordingly, it returns a boolean value indicting whether the program should halt
-func handleKeyPresses(key rune, keyPresses <-chan rune, p Params, c distributorChannels, client *rpc.Client, filename string) {
+func handleKeyPresses(key rune, keyPresses <-chan rune, p Params, c distributorChannels, client *rpc.Client, filename string) bool {
 
 	switch key {
 	case 's':
@@ -60,29 +60,31 @@ func handleKeyPresses(key rune, keyPresses <-chan rune, p Params, c distributorC
 		if err != nil {
 			fmt.Println(err)
 		}
-		fmt.Println(worldResponse.CompletedTurns)
 		outputWorld(p.ImageHeight, p.ImageWidth, worldResponse.CompletedTurns, worldResponse.World, filename, c)
 	case 'q':
 
-		// ends the client program without stopping server
-		//server must be able to be called again without failure
+		// ends the client program without stopping the server, must be able to be called again without failure
 
 	case 'k':
-
-		// shut down server cleanly
 		// output
-	case 'p':
 		/*
-			pause := true
-			for pause {
-				select {
-				case k := <-keyPresses:
-					pause = k != 'p'
-				}
+			worldResponse := new(stubs.CurrentWorldResponse)
+			err1 := client.Call(stubs.GetCurrentWorld, struct{}{}, worldResponse)
+			if err1 != nil {
+				fmt.Println(err1)
 			}
+			outputWorld(p.ImageHeight, p.ImageWidth, worldResponse.CompletedTurns, worldResponse.World, filename, c)
 
 		*/
+		// shut down server cleanly
+		err2 := client.Call(stubs.HaltServer, struct{}{}, struct{}{})
+		if err2 != nil {
+			fmt.Println(err2)
+		}
+		//kill client
+	case 'p':
 	}
+	return false
 }
 
 /*
@@ -147,7 +149,7 @@ func makeCall(client *rpc.Client, p Params, c distributorChannels, keyPresses <-
 			}
 			halt = true
 		case k := <-keyPresses:
-			handleKeyPresses(k, keyPresses, p, c, client, filename)
+			halt = handleKeyPresses(k, keyPresses, p, c, client, filename)
 		case <-timer.C:
 			response := new(stubs.AliveCellsResponse)
 			client.Call(stubs.GetAliveCount, struct{}{}, response)

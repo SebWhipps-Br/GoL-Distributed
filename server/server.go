@@ -32,6 +32,7 @@ type GameOfLifeOperations struct {
 	World          []util.BitArray
 	ResultChannel  chan Result
 	CompletedTurns int
+	halt           bool
 }
 
 /*
@@ -80,7 +81,7 @@ func executeTurns(Turns int, Width int, Height int, g *GameOfLifeOperations) {
 	nextWorld := makeWorld(Height, Width)
 	defer mutex.Unlock()
 	//Execute all turns of the Game of Life.
-	for g.CompletedTurns < Turns {
+	for g.CompletedTurns < Turns && !g.halt {
 		mutex.Lock()
 		//iterate through each cell in the current world
 		for y := 0; y < Height; y++ {
@@ -141,12 +142,21 @@ func (g *GameOfLifeOperations) GetCurrentWorld(_ struct{}, res *stubs.CurrentWor
 	return
 }
 
+func (g *GameOfLifeOperations) HaltServer(_ struct{}, _ struct{}) (err error) {
+	mutex.Lock()
+	g.halt = true
+	mutex.Unlock()
+	return
+}
+
 func main() {
+	// initialise server
 	pAddr := flag.String("port", "8030", "Port to listen on")
 	flag.Parse()
 	rand.Seed(time.Now().UnixNano())
 	g := new(GameOfLifeOperations)
 	g.ResultChannel = make(chan Result)
+	g.halt = false
 	rpc.Register(g)
 	listener, _ := net.Listen("tcp", ":"+*pAddr)
 	defer listener.Close()
