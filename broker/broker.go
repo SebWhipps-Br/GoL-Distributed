@@ -19,8 +19,6 @@ var (
 
 )
 
-const serverAddress = "127.0.0.1:8030"
-
 // Result represents the result of the executeTurns function
 type Result struct {
 	World      []util.BitArray
@@ -85,8 +83,14 @@ func transformY(value, height int) int {
 
 func connectToWorkers() []*rpc.Client {
 	clients := make([]*rpc.Client, stubs.Threads)
+	serverAddresses := []string{
+		"127.0.0.1:8031",
+		"127.0.0.1:8032",
+		"127.0.0.1:8033",
+		"127.0.0.1:8034",
+	}
 	for i := range clients {
-		dial, err := rpc.Dial("tcp", serverAddress)
+		dial, err := rpc.Dial("tcp", serverAddresses[i])
 		clients[i] = dial
 		if err != nil {
 			fmt.Println(err)
@@ -104,7 +108,7 @@ func makeCall(scale, worldWidth int, inPart []util.BitArray, client *rpc.Client,
 		WorldWidth: worldWidth,
 		InPart:     inPart,
 	}
-	err := client.Call("Server.Method", request, &serverResponse)
+	err := client.Call(stubs.Worker, request, &serverResponse)
 	if err != nil {
 		fmt.Println("RPC call error:", err)
 	}

@@ -15,7 +15,8 @@ var (
 	done = false
 )
 
-type workerOperations struct {
+type WorkerOperations struct {
+	Up bool
 }
 
 /*
@@ -83,12 +84,12 @@ func worker(scale, worldWidth int, part []util.BitArray) []util.BitArray {
 	return outPart
 }
 
-func (w *workerOperations) Worker(request stubs.WorkerRequest, response *stubs.WorkerResponse) {
+func (w *WorkerOperations) Worker(request stubs.WorkerRequest, response *stubs.WorkerResponse) (err error) {
 	response.OutPart = worker(request.Scale, request.WorldWidth, request.InPart)
 	return
 }
 
-func (w *workerOperations) KillWorker(_ struct{}, response *stubs.StandardServerResponse) {
+func (w *WorkerOperations) KillWorker(_ struct{}, response *stubs.StandardServerResponse) (err error) {
 	done = true
 	return
 }
@@ -98,7 +99,12 @@ func main() {
 	pAddr := flag.String("port", "8030", "Port to listen on")
 	flag.Parse()
 	rand.Seed(time.Now().UnixNano())
-
+	w := new(WorkerOperations)
+	w.Up = true
+	err := rpc.Register(w)
+	if err != nil {
+		fmt.Println(err)
+	}
 	listener, _ := net.Listen("tcp", ":"+*pAddr)
 
 	go func() {
