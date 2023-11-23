@@ -5,7 +5,7 @@ import "uk.ac.bris.cs/gameoflife/util"
 // capital letters for exported types
 // game of life operations and processed turns
 
-var Handler = "GameOfLifeOperations.UpdateWorld"
+var RunGameOfLife = "GameOfLifeOperations.RunGameOfLife"
 var GetAliveCount = "GameOfLifeOperations.GetAliveCount"
 var GetCurrentWorld = "GameOfLifeOperations.GetCurrentWorld"
 var HaltServer = "GameOfLifeOperations.HaltServer"

@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"math/rand"
 	"net"
 	"net/rpc"
@@ -52,7 +53,6 @@ func AliveCount(world []util.BitArray) int {
 			}
 		}
 	}
-	//fmt.Println(count)
 	return count
 }
 
@@ -113,7 +113,7 @@ func executeTurns(Turns int, Width int, Height int, g *GameOfLifeOperations) {
 }
 
 // UpdateWorld is called to Run game of life
-func (g *GameOfLifeOperations) UpdateWorld(req stubs.Request, res *stubs.Response) (err error) {
+func (g *GameOfLifeOperations) RunGameOfLife(req stubs.Request, res *stubs.Response) (err error) {
 	g.CompletedTurns = 0
 	g.World = req.World
 	g.halt = false
@@ -167,8 +167,16 @@ func main() {
 	g := new(GameOfLifeOperations)
 	g.ResultChannel = make(chan Result)
 	g.halt = false
-	rpc.Register(g)
+	err := rpc.Register(g)
+	if err != nil {
+		fmt.Println(err)
+	}
 	listener, _ := net.Listen("tcp", ":"+*pAddr)
-	defer listener.Close()
+	defer func(listener net.Listener) {
+		err := listener.Close()
+		if err != nil {
+			fmt.Println(err)
+		}
+	}(listener)
 	rpc.Accept(listener)
 }

@@ -159,7 +159,7 @@ func makeCall(client *rpc.Client, p Params, c distributorChannels, keyPresses <-
 	request := stubs.Request{Turns: turns, ImageWidth: width, ImageHeight: height, World: world}
 	response := new(stubs.Response)
 	go func() {
-		err := client.Call(stubs.Handler, request, response)
+		err := client.Call(stubs.RunGameOfLife, request, response)
 		done <- err
 	}()
 
