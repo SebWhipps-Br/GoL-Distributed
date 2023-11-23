@@ -58,24 +58,23 @@ func haltServer(client *rpc.Client) {
 	}
 }
 
+func getCurrentWorld(client *rpc.Client) *stubs.CurrentWorldResponse {
+	worldResponse := new(stubs.CurrentWorldResponse)
+	err := client.Call(stubs.GetCurrentWorld, struct{}{}, worldResponse)
+	if err != nil {
+		fmt.Println(err)
+	}
+	return worldResponse
+}
+
 // handleKeyPresses takes a keypress and acts accordingly, it returns a boolean value indicting whether the program should halt
 func handleKeyPresses(key rune, keyPresses <-chan rune, p Params, c distributorChannels, client *rpc.Client, filename string) bool {
-
 	switch key {
 	case 's':
-		worldResponse := new(stubs.CurrentWorldResponse)
-		err := client.Call(stubs.GetCurrentWorld, struct{}{}, worldResponse)
-		if err != nil {
-			fmt.Println(err)
-		}
+		worldResponse := getCurrentWorld(client)
 		outputWorld(p.ImageHeight, p.ImageWidth, worldResponse.CompletedTurns, worldResponse.World, filename, c)
-	case 'q':
-		// ends the client program without stopping the server, must be able to be called again without failure
-		worldResponse := new(stubs.CurrentWorldResponse)
-		err := client.Call(stubs.GetCurrentWorld, struct{}{}, worldResponse)
-		if err != nil {
-			fmt.Println(err)
-		}
+	case 'q': // ends the client program without stopping the server, must be able to be called again without failure
+		worldResponse := getCurrentWorld(client)
 		exit(p, c, worldResponse.CompletedTurns, worldResponse.World, filename)
 		return true
 	case 'k':
