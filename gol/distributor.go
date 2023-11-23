@@ -18,11 +18,6 @@ type distributorChannels struct {
 	ioInput    <-chan uint8
 }
 
-const (
-	Alive = true
-	Dead  = false
-)
-
 /*
 outputWorld sends the image out byte by byte via the appropriate channels
 */
@@ -42,7 +37,7 @@ func finalAliveCount(world []util.BitArray) []util.Cell {
 	var aliveCells []util.Cell
 	for y, row := range world {
 		for x := 0; x < row.Len(); x++ {
-			if row.GetBit(x) == Alive {
+			if row.GetBit(x) == stubs.Alive {
 				aliveCells = append(aliveCells, util.Cell{X: x, Y: y})
 			}
 		}

@@ -36,3 +36,8 @@ type CurrentWorldResponse struct {
 type HaltServerResponse struct {
 	Success bool
 }
+
+const (
+	Alive = true
+	Dead  = false
+)
