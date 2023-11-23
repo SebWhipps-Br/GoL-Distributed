@@ -77,7 +77,8 @@ func handleKeyPresses(key rune, keyPresses <-chan rune, p Params, c distributorC
 
 		*/
 		// shut down server cleanly
-		err2 := client.Call(stubs.HaltServer, struct{}{}, struct{}{})
+		HaltResponse := new(stubs.HaltServerResponse)
+		err2 := client.Call(stubs.HaltServer, struct{}{}, HaltResponse)
 		if err2 != nil {
 			fmt.Println(err2)
 		}
@@ -157,7 +158,7 @@ func makeCall(client *rpc.Client, p Params, c distributorChannels, keyPresses <-
 			timer.Reset(2 * time.Second)
 		}
 	}
-	exit(p, c, turns, response.NextWorld, filename)
+	exit(p, c, response.CompletedTurns, response.NextWorld, filename)
 }
 
 // distributor divides the work between workers and interacts with other goroutines.

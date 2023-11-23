@@ -7,12 +7,12 @@ import "uk.ac.bris.cs/gameoflife/util"
 var Handler = "GameOfLifeOperations.UpdateWorld"
 var GetAliveCount = "GameOfLifeOperations.GetAliveCount"
 var GetCurrentWorld = "GameOfLifeOperations.GetCurrentWorld"
-
 var HaltServer = "GameOfLifeOperations.HaltServer"
 
 // final world returned
 type Response struct {
-	NextWorld []util.BitArray
+	NextWorld      []util.BitArray
+	CompletedTurns int
 }
 
 // contains num of turns, 2d slice (initial state), size of image
@@ -31,4 +31,8 @@ type AliveCellsResponse struct {
 type CurrentWorldResponse struct {
 	World          []util.BitArray
 	CompletedTurns int
+}
+
+type HaltServerResponse struct {
+	Success bool
 }
