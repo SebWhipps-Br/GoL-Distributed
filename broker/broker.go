@@ -34,17 +34,6 @@ type GameOfLifeOperations struct {
 	clients        []*rpc.Client
 }
 
-/*
-makeWorld is a way to create empty worlds (or parts of worlds)
-*/
-func makeWorld(height, width int) []util.BitArray {
-	world := make([]util.BitArray, height) //grid [i][j], [i] represents the row index, [j] represents the column index
-	for i := range world {
-		world[i] = util.NewBitArray(width)
-	}
-	return world
-}
-
 // AliveCount counts the number of alive cells in the world, and returns this as an int
 func AliveCount(world []util.BitArray) int {
 	count := 0
