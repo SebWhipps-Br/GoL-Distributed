@@ -13,11 +13,6 @@ import (
 
 //server is the worker
 
-const (
-	Alive = true
-	Dead  = false
-)
-
 var (
 	mutex sync.Mutex // Mutex for safe access to the global channel
 )
@@ -52,7 +47,7 @@ func AliveCount(world []util.BitArray) int {
 	count := 0
 	for _, row := range world {
 		for x := 0; x < row.Len(); x++ {
-			if row.GetBit(x) == Alive {
+			if row.GetBit(x) == stubs.Alive {
 				count++
 			}
 		}
@@ -70,7 +65,7 @@ func countLiveNeighbors(x, y, w int, h int, world []util.BitArray) int {
 	for i := 0; i < 8; i++ {
 		ny := (y + dy[i] + h) % h
 		nx := (x + dx[i] + w) % w
-		if world[ny].GetBit(nx) == Alive {
+		if world[ny].GetBit(nx) == stubs.Alive {
 			liveNeighbors++
 		}
 	}
@@ -88,18 +83,18 @@ func executeTurns(Turns int, Width int, Height int, g *GameOfLifeOperations) {
 		for y := 0; y < Height; y++ {
 			for x := 0; x < Width; x++ {
 				liveNeighbors := countLiveNeighbors(x, y, Width, Height, g.World)
-				if g.World[y].GetBit(x) == Alive { //apply GoL rules
+				if g.World[y].GetBit(x) == stubs.Alive { //apply GoL rules
 					//less than 2 live neighbours
 					if liveNeighbors < 2 || liveNeighbors > 3 {
-						nextWorld[y].SetBit(x, Dead)
+						nextWorld[y].SetBit(x, stubs.Dead)
 					} else {
-						nextWorld[y].SetBit(x, Alive)
+						nextWorld[y].SetBit(x, stubs.Alive)
 					}
 				} else { //any dead cell with exactly three live neighbours becomes alive
 					if liveNeighbors == 3 {
-						nextWorld[y].SetBit(x, Alive)
+						nextWorld[y].SetBit(x, stubs.Alive)
 					} else {
-						nextWorld[y].SetBit(x, Dead)
+						nextWorld[y].SetBit(x, stubs.Dead)
 					}
 				}
 			}

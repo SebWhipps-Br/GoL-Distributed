@@ -4,6 +4,7 @@ import "uk.ac.bris.cs/gameoflife/util"
 
 // capital letters for exported types
 // game of life operations and processed turns
+
 var Handler = "GameOfLifeOperations.UpdateWorld"
 var GetAliveCount = "GameOfLifeOperations.GetAliveCount"
 var GetCurrentWorld = "GameOfLifeOperations.GetCurrentWorld"
@@ -16,7 +17,7 @@ type Response struct {
 	CompletedTurns int
 }
 
-// contains num of turns, 2d slice (initial state), size of image
+// Request contains num of turns, 2d slice (initial state), size of image
 type Request struct {
 	Turns       int
 	ImageWidth  int
@@ -45,3 +46,8 @@ type PauseServerRequest struct {
 type PauseServerResponse struct {
 	CompletedTurns int
 }
+
+const (
+	Alive = true
+	Dead  = false
+)

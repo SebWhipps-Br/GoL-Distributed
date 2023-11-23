@@ -18,11 +18,6 @@ type distributorChannels struct {
 	ioInput    <-chan uint8
 }
 
-const (
-	Alive = true
-	Dead  = false
-)
-
 /*
 outputWorld sends the image out byte by byte via the appropriate channels
 */
@@ -42,7 +37,7 @@ func finalAliveCount(world []util.BitArray) []util.Cell {
 	var aliveCells []util.Cell
 	for y, row := range world {
 		for x := 0; x < row.Len(); x++ {
-			if row.GetBit(x) == Alive {
+			if row.GetBit(x) == stubs.Alive {
 				aliveCells = append(aliveCells, util.Cell{X: x, Y: y})
 			}
 		}
@@ -58,20 +53,34 @@ func haltServer(client *rpc.Client) {
 	}
 }
 
+func getCurrentWorld(client *rpc.Client) *stubs.CurrentWorldResponse {
+	worldResponse := new(stubs.CurrentWorldResponse)
+	err := client.Call(stubs.GetCurrentWorld, struct{}{}, worldResponse)
+	if err != nil {
+		fmt.Println(err)
+	}
+	return worldResponse
+}
+
+func regularAliveCount(client *rpc.Client, c distributorChannels) {
+	response := new(stubs.AliveCellsResponse)
+	err := client.Call(stubs.GetAliveCount, struct{}{}, response)
+	if err != nil {
+		fmt.Println(err)
+	}
+	c.events <- AliveCellsCount{CellsCount: response.AliveCellsCount, CompletedTurns: response.CompletedTurns}
+}
+
 // handleKeyPresses takes a keypress and acts accordingly, it returns a boolean value indicting whether the program should halt
 func handleKeyPresses(key rune, keyPresses <-chan rune, p Params, c distributorChannels, client *rpc.Client, filename string) bool {
-
 	switch key {
 	case 's':
-		worldResponse := new(stubs.CurrentWorldResponse)
-		err := client.Call(stubs.GetCurrentWorld, struct{}{}, worldResponse)
-		if err != nil {
-			fmt.Println(err)
-		}
+		worldResponse := getCurrentWorld(client)
 		outputWorld(p.ImageHeight, p.ImageWidth, worldResponse.CompletedTurns, worldResponse.World, filename, c)
-	case 'q':
-		// ends the client program without stopping the server, must be able to be called again without failure
-
+	case 'q': // ends the client program without stopping the server, must be able to be called again without failure
+		worldResponse := getCurrentWorld(client)
+		exit(p, c, worldResponse.CompletedTurns, worldResponse.World, filename)
+		return true
 	case 'k':
 		haltServer(client)
 	case 'p':
@@ -161,17 +170,15 @@ func makeCall(client *rpc.Client, p Params, c distributorChannels, keyPresses <-
 			if err != nil {
 				fmt.Println(err)
 			}
+			exit(p, c, response.CompletedTurns, response.NextWorld, filename)
 			halt = true
 		case k := <-keyPresses:
 			halt = handleKeyPresses(k, keyPresses, p, c, client, filename)
 		case <-timer.C:
-			response := new(stubs.AliveCellsResponse)
-			client.Call(stubs.GetAliveCount, struct{}{}, response)
-			c.events <- AliveCellsCount{CellsCount: response.AliveCellsCount, CompletedTurns: response.CompletedTurns}
+			regularAliveCount(client, c)
 			timer.Reset(2 * time.Second)
 		}
 	}
-	exit(p, c, response.CompletedTurns, response.NextWorld, filename)
 }
 
 // distributor divides the work between workers and interacts with other goroutines.
