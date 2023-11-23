@@ -11,7 +11,6 @@ var GetCurrentWorld = "GameOfLifeOperations.GetCurrentWorld"
 var HaltServer = "GameOfLifeOperations.HaltServer"
 var PauseServer = "GameOfLifeOperations.PauseServer"
 
-// final world returned
 type Response struct {
 	NextWorld      []util.BitArray
 	CompletedTurns int
@@ -35,7 +34,7 @@ type CurrentWorldResponse struct {
 	CompletedTurns int
 }
 
-type HaltServerResponse struct {
+type StandardServerResponse struct {
 	Success bool
 }
 
@@ -51,3 +50,17 @@ const (
 	Alive = true
 	Dead  = false
 )
+
+//////
+
+var Worker = "WorkerOperations.Worker"
+
+type WorkerRequest struct {
+	Scale      int
+	WorldWidth int
+	InPart     []util.BitArray
+}
+
+type WorkerResponse struct {
+	OutPart []util.BitArray
+}

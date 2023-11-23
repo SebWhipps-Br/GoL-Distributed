@@ -16,7 +16,10 @@ import (
 
 var (
 	mutex sync.Mutex // Mutex for safe access to the global channel
+
 )
+
+const threads = 4
 
 // Result represents the result of the executeTurns function
 type Result struct {
@@ -56,25 +59,59 @@ func AliveCount(world []util.BitArray) int {
 	return count
 }
 
-// countLiveNeighbors calculates the number of live neighbors around a given cell.
-func countLiveNeighbors(x, y, w int, h int, world []util.BitArray) int {
-	liveNeighbors := 0
-	dx := []int{-1, 0, 1, -1, 1, -1, 0, 1}
-	dy := []int{-1, -1, -1, 0, 0, 1, 1, 1}
+// threadScale Creates an array of length threads with the scale for each thread
+func threadScale(height, threads int) []int {
+	baseNumber, remainder := height/threads, height%threads
 
-	for i := 0; i < 8; i++ {
-		ny := (y + dy[i] + h) % h
-		nx := (x + dx[i] + w) % w
-		if world[ny].GetBit(nx) == stubs.Alive {
-			liveNeighbors++
+	scale := make([]int, threads)
+	for i := 0; i < threads; i++ {
+		if remainder > 0 {
+			scale[i] = baseNumber + 1
+			remainder--
+		} else {
+			scale[i] = baseNumber
 		}
 	}
-	return liveNeighbors
+	return scale
 }
 
-// 1 worker to start with
+func transformY(value, height int) int {
+	if value == -1 {
+		return height - 1
+	}
+	return (value + height) % height
+}
+
+func makeRpcCall(scale, worldWidth int, inPart []util.BitArray, clients []*rpc.Client, resultChannel chan<- stubs.WorkerResponse, wg *sync.WaitGroup) {
+	defer wg.Done()
+
+	// Establish RPC connection
+	client, err := rpc.Dial("tcp", serverAddr)
+	if err != nil {
+		fmt.Println("Error connecting to server:", err)
+		return
+	}
+	defer client.Close()
+
+	// Perform the RPC call
+	var serverResponse stubs.WorkerResponse
+	request := stubs.WorkerRequest{
+		Scale:      scale,
+		WorldWidth: worldWidth,
+		InPart:     inPart,
+	}
+	err = client.Call("Server.Method", request, &serverResponse)
+	if err != nil {
+		fmt.Println("RPC call error:", err)
+		return
+	}
+
+	// Send the response through the channel
+	resultChannel <- serverResponse
+}
+
 func executeTurns(Turns int, Width int, Height int, g *GameOfLifeOperations) {
-	nextWorld := makeWorld(Height, Width)
+	scale := threadScale(Height, threads)
 	//defer mutex.Unlock()
 	//Execute all turns of the Game of Life.
 	for g.CompletedTurns < Turns && !g.halt {
@@ -82,30 +119,45 @@ func executeTurns(Turns int, Width int, Height int, g *GameOfLifeOperations) {
 			time.Sleep(500 * time.Millisecond) // A short pause to avoid spinning
 		}
 		mutex.Lock()
+		nextWorld := make([]util.BitArray, 0)
 		//iterate through each cell in the current world
-		for y := 0; y < Height; y++ {
-			for x := 0; x < Width; x++ {
-				liveNeighbors := countLiveNeighbors(x, y, Width, Height, g.World)
-				if g.World[y].GetBit(x) == stubs.Alive { //apply GoL rules
-					//less than 2 live neighbours
-					if liveNeighbors < 2 || liveNeighbors > 3 {
-						nextWorld[y].SetBit(x, stubs.Dead)
-					} else {
-						nextWorld[y].SetBit(x, stubs.Alive)
-					}
-				} else { //any dead cell with exactly three live neighbours becomes alive
-					if liveNeighbors == 3 {
-						nextWorld[y].SetBit(x, stubs.Alive)
-					} else {
-						nextWorld[y].SetBit(x, stubs.Dead)
-					}
-				}
+
+		workerResponses := make([]stubs.WorkerResponse, threads) // rows
+		clients := make
+		//initiates go routines
+		startY := 0 //inclusive
+		endY := 0   //exclusive
+		for i := range workerResponses {
+			endY = startY + scale[i] //endY is exclusive
+			// cuts up world into parts needed for each thread
+
+			inPart := make([]util.BitArray, 0)
+			for j := startY - 1; j < endY+1; j++ {
+				inPart = append(inPart, g.World[transformY(j, Height)])
 			}
+
+			//TODO put RPC call here
+
+			go func() {
+				err := clients[i].Call(stubs.RunGameOfLife, request, response)
+				dones[i] <- err
+			}()
+
+			//go worker(startY, scale[i], p.ImageWidth, inPart, workerResponses[i], turn, c)
+			startY = endY
 		}
-		for row := range g.World { // copy the inner slices of the world
-			copy(g.World[row], nextWorld[row])
+
+		//receives response
+		for _, ch := range workerChannels {
+			nextWorld = append(nextWorld, <-ch...)
 		}
-		g.CompletedTurns++
+		//copy nextWorld to world
+		for row := range world {
+			copy(world[row], nextWorld[row])
+		}
+		turn++
+		cellsCount := AliveCount(world, turn, c)
+
 		mutex.Unlock()
 	}
 	result := Result{World: g.World, AliveCells: AliveCount(g.World)}
