@@ -90,6 +90,7 @@ func getCurrentWorld(client *rpc.Client) *stubs.CurrentWorldResponse {
 	return worldResponse
 }
 
+// regularAliveCount makes an RPC call to the server to retrieve the alive cell count and the turn number and passes this to events
 func regularAliveCount(client *rpc.Client, c distributorChannels) {
 	response := new(stubs.AliveCellsResponse)
 	err := client.Call(stubs.GetAliveCount, struct{}{}, response)

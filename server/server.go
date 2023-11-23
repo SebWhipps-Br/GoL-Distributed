@@ -79,7 +79,7 @@ func executeTurns(Turns int, Width int, Height int, g *GameOfLifeOperations) {
 	//Execute all turns of the Game of Life.
 	for g.CompletedTurns < Turns && !g.halt {
 		for g.pause {
-			time.Sleep(100 * time.Millisecond) // A short pause to avoid spinning
+			time.Sleep(500 * time.Millisecond) // A short pause to avoid spinning
 		}
 		mutex.Lock()
 		//iterate through each cell in the current world
@@ -112,11 +112,12 @@ func executeTurns(Turns int, Width int, Height int, g *GameOfLifeOperations) {
 	g.ResultChannel <- result
 }
 
-// UpdateWorld is called to Run game of life
+// RunGameOfLife is called to Run game of life, it must assume that it has already been called
 func (g *GameOfLifeOperations) RunGameOfLife(req stubs.Request, res *stubs.Response) (err error) {
 	g.CompletedTurns = 0
 	g.World = req.World
 	g.halt = false
+	g.pause = false
 	go executeTurns(req.Turns, req.ImageWidth, req.ImageHeight, g)
 	// Wait for the result from the executeTurns
 	result := <-g.ResultChannel
