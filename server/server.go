@@ -77,7 +77,10 @@ func executeTurns(Turns int, Width int, Height int, g *GameOfLifeOperations) {
 	nextWorld := makeWorld(Height, Width)
 	//defer mutex.Unlock()
 	//Execute all turns of the Game of Life.
-	for g.CompletedTurns < Turns && !g.halt && g.pause == false {
+	for g.CompletedTurns < Turns && !g.halt {
+		for g.pause {
+
+		}
 		mutex.Lock()
 		//iterate through each cell in the current world
 		for y := 0; y < Height; y++ {
