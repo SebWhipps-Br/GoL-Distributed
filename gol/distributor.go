@@ -53,6 +53,34 @@ func haltServer(client *rpc.Client) {
 	}
 }
 
+func handlePause(client *rpc.Client, keyPresses <-chan rune) {
+	pause := true
+	request := stubs.PauseServerRequest{Pause: true}
+	turnResponse := new(stubs.PauseServerResponse)
+
+	err := client.Call(stubs.PauseServer, request, turnResponse)
+	fmt.Println("Completed Turns when paused: ", turnResponse.CompletedTurns)
+
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	for pause {
+		select {
+		case k := <-keyPresses:
+			pause = k != 'p'
+			request := stubs.PauseServerRequest{Pause: false}
+			response := new(stubs.Response)
+
+			err2 := client.Call(stubs.PauseServer, request, response)
+			if err2 != nil {
+				fmt.Println(err2)
+			}
+			fmt.Println("Continuing")
+		}
+	}
+}
+
 func getCurrentWorld(client *rpc.Client) *stubs.CurrentWorldResponse {
 	worldResponse := new(stubs.CurrentWorldResponse)
 	err := client.Call(stubs.GetCurrentWorld, struct{}{}, worldResponse)
@@ -84,28 +112,7 @@ func handleKeyPresses(key rune, keyPresses <-chan rune, p Params, c distributorC
 	case 'k':
 		haltServer(client)
 	case 'p':
-		pause := true
-		//must pass server
-		request := stubs.PauseServerRequest{Pause: true}
-		turnResponse := new(stubs.PauseServerResponse)
-		err := client.Call(stubs.PauseServer, request, turnResponse)
-		fmt.Println("Completed Turns when paused: ", turnResponse.CompletedTurns)
-		if err != nil {
-			fmt.Println("err")
-		}
-		for pause {
-			select {
-			case k := <-keyPresses:
-				pause = k != 'p'
-				request := stubs.PauseServerRequest{Pause: false}
-				response := new(stubs.Response)
-				err2 := client.Call(stubs.PauseServer, request, response)
-				if err2 != nil {
-					fmt.Println(err2)
-				}
-				fmt.Println("Continuing")
-			}
-		}
+		handlePause(client, keyPresses)
 	}
 	return false
 }
