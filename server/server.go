@@ -176,18 +176,14 @@ func main() {
 	go func() {
 		for {
 			if g.halt {
-				listener.Close()
+				err := listener.Close()
+				if err != nil {
+					fmt.Println()
+				}
 				break
 			}
 			time.Sleep(500 * time.Millisecond)
 		}
 	}()
-
-	defer func(listener net.Listener) {
-		err := listener.Close()
-		if err != nil {
-			fmt.Println(err)
-		}
-	}(listener)
 	rpc.Accept(listener)
 }
