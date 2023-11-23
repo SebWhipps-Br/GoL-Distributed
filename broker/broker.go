@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"math/rand"
 	"net"
 	"net/rpc"
 	"sync"
@@ -88,7 +87,7 @@ func connectToWorkers() []*rpc.Client {
 	return clients
 }
 
-func makeCall(scale, worldWidth int, inPart []util.BitArray, client *rpc.Client, resultChannel chan []util.BitArray) {
+func makeWorkerCall(scale, worldWidth int, inPart []util.BitArray, client *rpc.Client, resultChannel chan []util.BitArray) {
 
 	// Perform the RPC call
 	var serverResponse stubs.WorkerResponse
@@ -104,6 +103,19 @@ func makeCall(scale, worldWidth int, inPart []util.BitArray, client *rpc.Client,
 
 	// Send the response through the channel
 	resultChannel <- serverResponse.OutPart
+}
+
+func killWorkersCall(clients []*rpc.Client) {
+	var serverResponse stubs.StandardServerResponse
+	for i := range clients {
+		err := clients[i].Call(stubs.KillWorker, struct{}{}, serverResponse)
+		if err != nil {
+			fmt.Println("RPC call error:", err)
+		}
+		if !serverResponse.Success {
+			fmt.Println("Failed")
+		}
+	}
 }
 
 func executeTurns(Turns int, Width int, Height int, g *GameOfLifeOperations) {
@@ -133,7 +145,7 @@ func executeTurns(Turns int, Width int, Height int, g *GameOfLifeOperations) {
 				inPart = append(inPart, g.World[transformY(j, Height)])
 			}
 			//
-			go makeCall(scale[i], Width, inPart, g.clients[i], workerResponses[i])
+			go makeWorkerCall(scale[i], Width, inPart, g.clients[i], workerResponses[i])
 
 			startY = endY
 		}
@@ -149,6 +161,9 @@ func executeTurns(Turns int, Width int, Height int, g *GameOfLifeOperations) {
 		}
 		g.CompletedTurns++
 		mutex.Unlock()
+	}
+	if g.halt {
+		killWorkersCall(g.clients)
 	}
 	result := Result{World: g.World, AliveCells: AliveCount(g.World)}
 	g.ResultChannel <- result
@@ -206,7 +221,7 @@ func main() {
 	// initialise server
 	pAddr := flag.String("port", "8030", "Port to listen on")
 	flag.Parse()
-	rand.Seed(time.Now().UnixNano())
+	//rand.Seed(time.Now().UnixNano())
 	g := new(GameOfLifeOperations)
 	g.ResultChannel = make(chan Result)
 	g.halt = false

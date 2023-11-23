@@ -55,6 +55,8 @@ const (
 
 var Worker = "WorkerOperations.Worker"
 
+var KillWorker = "WorkerOperations.KillWorker"
+
 type WorkerRequest struct {
 	Scale      int
 	WorldWidth int

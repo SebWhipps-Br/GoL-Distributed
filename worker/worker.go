@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"math/rand"
 	"net"
 	"net/rpc"
 	"time"
@@ -93,6 +92,7 @@ func (w *WorkerOperations) Worker(request stubs.WorkerRequest, response *stubs.W
 
 func (w *WorkerOperations) KillWorker(_ struct{}, response *stubs.StandardServerResponse) (err error) {
 	done = true
+	response.Success = true
 	return
 }
 
@@ -100,7 +100,7 @@ func main() {
 	// initialise server
 	pAddr := flag.String("port", "8030", "Port to listen on")
 	flag.Parse()
-	rand.Seed(time.Now().UnixNano())
+	//rand.Seed(time.Now().UnixNano())
 	w := new(WorkerOperations)
 	w.Up = true
 	err := rpc.Register(w)
