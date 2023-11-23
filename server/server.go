@@ -33,6 +33,7 @@ type GameOfLifeOperations struct {
 	ResultChannel  chan Result
 	CompletedTurns int
 	halt           bool
+	pause          bool
 }
 
 /*
@@ -81,7 +82,7 @@ func executeTurns(Turns int, Width int, Height int, g *GameOfLifeOperations) {
 	nextWorld := makeWorld(Height, Width)
 	//defer mutex.Unlock()
 	//Execute all turns of the Game of Life.
-	for g.CompletedTurns < Turns && !g.halt {
+	for g.CompletedTurns < Turns && !g.halt && g.pause == false {
 		mutex.Lock()
 		//iterate through each cell in the current world
 		for y := 0; y < Height; y++ {
@@ -146,9 +147,17 @@ func (g *GameOfLifeOperations) GetCurrentWorld(_ struct{}, res *stubs.CurrentWor
 
 func (g *GameOfLifeOperations) HaltServer(_ struct{}, res *stubs.HaltServerResponse) (err error) {
 	mutex.Lock()
-	defer mutex.Unlock()
+	defer mutex.Unlock() //when function finished you unlock
 	g.halt = true
 	res.Success = true
+	return
+}
+
+func (g *GameOfLifeOperations) PauseServer(req stubs.PauseServerRequest, res *stubs.PauseServerResponse) (err error) {
+	mutex.Lock()
+	g.pause = req.Pause
+	res.CompletedTurns = g.CompletedTurns
+	mutex.Unlock()
 	return
 }
 

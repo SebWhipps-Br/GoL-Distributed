@@ -76,8 +76,10 @@ func handleKeyPresses(key rune, keyPresses <-chan rune, p Params, c distributorC
 		haltServer(client)
 	case 'p':
 		pause := true
-		turnResponse := new(stubs.CurrentWorldResponse)
-		err := client.Call(stubs.GetCurrentWorld, struct{}{}, turnResponse)
+		//must pass server
+		request := stubs.PauseServerRequest{Pause: true}
+		turnResponse := new(stubs.PauseServerResponse)
+		err := client.Call(stubs.PauseServer, request, turnResponse)
 		fmt.Println("Completed Turns when paused: ", turnResponse.CompletedTurns)
 		if err != nil {
 			fmt.Println("err")
@@ -86,6 +88,12 @@ func handleKeyPresses(key rune, keyPresses <-chan rune, p Params, c distributorC
 			select {
 			case k := <-keyPresses:
 				pause = k != 'p'
+				request := stubs.PauseServerRequest{Pause: false}
+				response := new(stubs.Response)
+				err2 := client.Call(stubs.PauseServer, request, response)
+				if err2 != nil {
+					fmt.Println(err2)
+				}
 				fmt.Println("Continuing")
 			}
 		}

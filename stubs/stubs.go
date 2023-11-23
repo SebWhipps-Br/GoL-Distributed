@@ -8,6 +8,7 @@ var Handler = "GameOfLifeOperations.UpdateWorld"
 var GetAliveCount = "GameOfLifeOperations.GetAliveCount"
 var GetCurrentWorld = "GameOfLifeOperations.GetCurrentWorld"
 var HaltServer = "GameOfLifeOperations.HaltServer"
+var PauseServer = "GameOfLifeOperations.PauseServer"
 
 // final world returned
 type Response struct {
@@ -35,4 +36,12 @@ type CurrentWorldResponse struct {
 
 type HaltServerResponse struct {
 	Success bool
+}
+
+type PauseServerRequest struct {
+	Pause bool
+}
+
+type PauseServerResponse struct {
+	CompletedTurns int
 }
