@@ -64,3 +64,5 @@ type WorkerRequest struct {
 type WorkerResponse struct {
 	OutPart []util.BitArray
 }
+
+const Threads = 4

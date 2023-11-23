@@ -19,7 +19,7 @@ var (
 
 )
 
-const threads = 4
+const serverAddress = "127.0.0.1:8030"
 
 // Result represents the result of the executeTurns function
 type Result struct {
@@ -33,6 +33,7 @@ type GameOfLifeOperations struct {
 	CompletedTurns int
 	halt           bool
 	pause          bool
+	clients        []*rpc.Client
 }
 
 /*
@@ -82,16 +83,19 @@ func transformY(value, height int) int {
 	return (value + height) % height
 }
 
-func makeRpcCall(scale, worldWidth int, inPart []util.BitArray, clients []*rpc.Client, resultChannel chan<- stubs.WorkerResponse, wg *sync.WaitGroup) {
-	defer wg.Done()
-
-	// Establish RPC connection
-	client, err := rpc.Dial("tcp", serverAddr)
-	if err != nil {
-		fmt.Println("Error connecting to server:", err)
-		return
+func connectToWorkers() []*rpc.Client {
+	clients := make([]*rpc.Client, stubs.Threads)
+	for i := range clients {
+		dial, err := rpc.Dial("tcp", serverAddress)
+		clients[i] = dial
+		if err != nil {
+			fmt.Println(err)
+		}
 	}
-	defer client.Close()
+	return clients
+}
+
+func makeCall(scale, worldWidth int, inPart []util.BitArray, client *rpc.Client, resultChannel chan []util.BitArray) {
 
 	// Perform the RPC call
 	var serverResponse stubs.WorkerResponse
@@ -100,18 +104,17 @@ func makeRpcCall(scale, worldWidth int, inPart []util.BitArray, clients []*rpc.C
 		WorldWidth: worldWidth,
 		InPart:     inPart,
 	}
-	err = client.Call("Server.Method", request, &serverResponse)
+	err := client.Call("Server.Method", request, &serverResponse)
 	if err != nil {
 		fmt.Println("RPC call error:", err)
-		return
 	}
 
 	// Send the response through the channel
-	resultChannel <- serverResponse
+	resultChannel <- serverResponse.OutPart
 }
 
 func executeTurns(Turns int, Width int, Height int, g *GameOfLifeOperations) {
-	scale := threadScale(Height, threads)
+	scale := threadScale(Height, stubs.Threads)
 	//defer mutex.Unlock()
 	//Execute all turns of the Game of Life.
 	for g.CompletedTurns < Turns && !g.halt {
@@ -122,42 +125,36 @@ func executeTurns(Turns int, Width int, Height int, g *GameOfLifeOperations) {
 		nextWorld := make([]util.BitArray, 0)
 		//iterate through each cell in the current world
 
-		workerResponses := make([]stubs.WorkerResponse, threads) // rows
-		clients := make
+		workerResponses := make([]chan []util.BitArray, stubs.Threads) // rows
+		for i := 0; i < stubs.Threads; i++ {
+			workerResponses[i] = make(chan []util.BitArray) //2d slice  //columns
+		}
 		//initiates go routines
-		startY := 0 //inclusive
-		endY := 0   //exclusive
+		startY, endY := 0, 0 //inclusive, exclusive
 		for i := range workerResponses {
 			endY = startY + scale[i] //endY is exclusive
-			// cuts up world into parts needed for each thread
 
+			// cuts up world into parts needed for each thread
 			inPart := make([]util.BitArray, 0)
 			for j := startY - 1; j < endY+1; j++ {
 				inPart = append(inPart, g.World[transformY(j, Height)])
 			}
+			//
+			go makeCall(scale[i], Width, inPart, g.clients[i], workerResponses[i])
 
-			//TODO put RPC call here
-
-			go func() {
-				err := clients[i].Call(stubs.RunGameOfLife, request, response)
-				dones[i] <- err
-			}()
-
-			//go worker(startY, scale[i], p.ImageWidth, inPart, workerResponses[i], turn, c)
 			startY = endY
 		}
-
 		//receives response
-		for _, ch := range workerChannels {
-			nextWorld = append(nextWorld, <-ch...)
+		for _, ch := range workerResponses {
+			part := <-ch
+			nextWorld = append(nextWorld, part...)
 		}
-		//copy nextWorld to world
-		for row := range world {
-			copy(world[row], nextWorld[row])
-		}
-		turn++
-		cellsCount := AliveCount(world, turn, c)
 
+		//copy nextWorld to world
+		for row := range g.World {
+			copy(g.World[row], nextWorld[row])
+		}
+		g.CompletedTurns++
 		mutex.Unlock()
 	}
 	result := Result{World: g.World, AliveCells: AliveCount(g.World)}
@@ -220,6 +217,7 @@ func main() {
 	g := new(GameOfLifeOperations)
 	g.ResultChannel = make(chan Result)
 	g.halt = false
+	g.clients = connectToWorkers()
 	err := rpc.Register(g)
 	if err != nil {
 		fmt.Println(err)

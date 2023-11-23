@@ -16,7 +16,6 @@ var (
 )
 
 type workerOperations struct {
-
 }
 
 /*
@@ -63,7 +62,7 @@ func countLiveNeighbors(x, y, w int, part []util.BitArray) int {
 worker is a routine to deal with smaller parts of the world
 takes part, which is part of the world with height + 2
 */
-func worker(scale, worldWidth int, part []util.BitArray) []util.BitArray{
+func worker(scale, worldWidth int, part []util.BitArray) []util.BitArray {
 	outPart := makeWorld(scale, worldWidth)
 	for y := 1; y < len(part)-1; y++ { // row by row, skipping the overlaps
 		for x := 0; x < worldWidth; x++ { // each cell in row
@@ -84,7 +83,7 @@ func worker(scale, worldWidth int, part []util.BitArray) []util.BitArray{
 	return outPart
 }
 
-func (w *workerOperations) Worker(request stubs.WorkerRequest, response *stubs.WorkerResponse)  {
+func (w *workerOperations) Worker(request stubs.WorkerRequest, response *stubs.WorkerResponse) {
 	response.OutPart = worker(request.Scale, request.WorldWidth, request.InPart)
 	return
 }
@@ -115,6 +114,4 @@ func main() {
 		}
 	}()
 	rpc.Accept(listener)
-}
-
 }
