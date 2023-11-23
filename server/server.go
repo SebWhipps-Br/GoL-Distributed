@@ -79,7 +79,7 @@ func executeTurns(Turns int, Width int, Height int, g *GameOfLifeOperations) {
 	//Execute all turns of the Game of Life.
 	for g.CompletedTurns < Turns && !g.halt {
 		for g.pause {
-
+			time.Sleep(100 * time.Millisecond) // A short pause to avoid spinning
 		}
 		mutex.Lock()
 		//iterate through each cell in the current world
@@ -172,6 +172,17 @@ func main() {
 		fmt.Println(err)
 	}
 	listener, _ := net.Listen("tcp", ":"+*pAddr)
+
+	go func() {
+		for {
+			if g.halt {
+				listener.Close()
+				break
+			}
+			time.Sleep(500 * time.Millisecond)
+		}
+	}()
+
 	defer func(listener net.Listener) {
 		err := listener.Close()
 		if err != nil {
