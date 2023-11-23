@@ -71,7 +71,13 @@ func handleKeyPresses(key rune, keyPresses <-chan rune, p Params, c distributorC
 		outputWorld(p.ImageHeight, p.ImageWidth, worldResponse.CompletedTurns, worldResponse.World, filename, c)
 	case 'q':
 		// ends the client program without stopping the server, must be able to be called again without failure
-
+		worldResponse := new(stubs.CurrentWorldResponse)
+		err := client.Call(stubs.GetCurrentWorld, struct{}{}, worldResponse)
+		if err != nil {
+			fmt.Println(err)
+		}
+		exit(p, c, worldResponse.CompletedTurns, worldResponse.World, filename)
+		return true
 	case 'k':
 		haltServer(client)
 	case 'p':
@@ -153,6 +159,7 @@ func makeCall(client *rpc.Client, p Params, c distributorChannels, keyPresses <-
 			if err != nil {
 				fmt.Println(err)
 			}
+			exit(p, c, response.CompletedTurns, response.NextWorld, filename)
 			halt = true
 		case k := <-keyPresses:
 			halt = handleKeyPresses(k, keyPresses, p, c, client, filename)
@@ -163,7 +170,6 @@ func makeCall(client *rpc.Client, p Params, c distributorChannels, keyPresses <-
 			timer.Reset(2 * time.Second)
 		}
 	}
-	exit(p, c, response.CompletedTurns, response.NextWorld, filename)
 }
 
 // distributor divides the work between workers and interacts with other goroutines.
