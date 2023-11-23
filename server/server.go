@@ -79,7 +79,7 @@ func countLiveNeighbors(x, y, w int, h int, world []util.BitArray) int {
 // 1 worker to start with
 func executeTurns(Turns int, Width int, Height int, g *GameOfLifeOperations) {
 	nextWorld := makeWorld(Height, Width)
-	defer mutex.Unlock()
+	//defer mutex.Unlock()
 	//Execute all turns of the Game of Life.
 	for g.CompletedTurns < Turns && !g.halt {
 		mutex.Lock()
@@ -117,10 +117,12 @@ func executeTurns(Turns int, Width int, Height int, g *GameOfLifeOperations) {
 func (g *GameOfLifeOperations) UpdateWorld(req stubs.Request, res *stubs.Response) (err error) {
 	g.CompletedTurns = 0
 	g.World = req.World
+	g.halt = false
 	go executeTurns(req.Turns, req.ImageWidth, req.ImageHeight, g)
 	// Wait for the result from the executeTurns
 	result := <-g.ResultChannel
 	res.NextWorld = result.World
+	res.CompletedTurns = g.CompletedTurns
 	return
 
 }
@@ -142,10 +144,11 @@ func (g *GameOfLifeOperations) GetCurrentWorld(_ struct{}, res *stubs.CurrentWor
 	return
 }
 
-func (g *GameOfLifeOperations) HaltServer(_ struct{}, _ struct{}) (err error) {
+func (g *GameOfLifeOperations) HaltServer(_ struct{}, res *stubs.HaltServerResponse) (err error) {
 	mutex.Lock()
+	defer mutex.Unlock()
 	g.halt = true
-	mutex.Unlock()
+	res.Success = true
 	return
 }
 

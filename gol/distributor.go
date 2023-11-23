@@ -50,6 +50,14 @@ func finalAliveCount(world []util.BitArray) []util.Cell {
 	return aliveCells
 }
 
+func haltServer(client *rpc.Client) {
+	haltServerResponse := new(stubs.HaltServerResponse)
+	err2 := client.Call(stubs.HaltServer, struct{}{}, haltServerResponse)
+	if err2 != nil {
+		fmt.Println(err2)
+	}
+}
+
 // handleKeyPresses takes a keypress and acts accordingly, it returns a boolean value indicting whether the program should halt
 func handleKeyPresses(key rune, keyPresses <-chan rune, p Params, c distributorChannels, client *rpc.Client, filename string) bool {
 
@@ -65,22 +73,7 @@ func handleKeyPresses(key rune, keyPresses <-chan rune, p Params, c distributorC
 		// ends the client program without stopping the server, must be able to be called again without failure
 
 	case 'k':
-		// output
-		/*
-			worldResponse := new(stubs.CurrentWorldResponse)
-			err1 := client.Call(stubs.GetCurrentWorld, struct{}{}, worldResponse)
-			if err1 != nil {
-				fmt.Println(err1)
-			}
-			outputWorld(p.ImageHeight, p.ImageWidth, worldResponse.CompletedTurns, worldResponse.World, filename, c)
-
-		*/
-		// shut down server cleanly
-		err2 := client.Call(stubs.HaltServer, struct{}{}, struct{}{})
-		if err2 != nil {
-			fmt.Println(err2)
-		}
-		//kill client
+		haltServer(client)
 	case 'p':
 		pause := true
 		turnResponse := new(stubs.CurrentWorldResponse)
@@ -170,7 +163,7 @@ func makeCall(client *rpc.Client, p Params, c distributorChannels, keyPresses <-
 			timer.Reset(2 * time.Second)
 		}
 	}
-	exit(p, c, turns, response.NextWorld, filename)
+	exit(p, c, response.CompletedTurns, response.NextWorld, filename)
 }
 
 // distributor divides the work between workers and interacts with other goroutines.
