@@ -11,12 +11,7 @@ import (
 	"uk.ac.bris.cs/gameoflife/util"
 )
 
-//server is the worker
-
-var (
-	mutex sync.Mutex // Mutex for safe access to the global channel
-
-)
+var mutex sync.Mutex // Mutex for safe access to the global channel
 
 // Result represents the result of the executeTurns function
 type Result struct {
@@ -69,6 +64,36 @@ func transformY(value, height int) int {
 	return (value + height) % height
 }
 
+// makeWorkerCall performs a call to a worker client and returns the processed part of the world
+func makeWorkerCall(scale, worldWidth int, inPart []util.BitArray, client *rpc.Client, resultChannel chan []util.BitArray) {
+	var workerResponse stubs.WorkerResponse
+	request := stubs.WorkerRequest{
+		Scale:      scale,
+		WorldWidth: worldWidth,
+		InPart:     inPart,
+	}
+	err := client.Call(stubs.Worker, request, &workerResponse)
+	if err != nil {
+		fmt.Println("RPC call error:", err)
+	}
+	// Send the response through the channel
+	resultChannel <- workerResponse.OutPart
+}
+
+// KillWorkersCall kills all worker clients that it is given
+func killWorkersCall(clients []*rpc.Client) {
+	var workerResponse stubs.StandardServerResponse
+	for i := range clients {
+		err := clients[i].Call(stubs.KillWorker, struct{}{}, workerResponse)
+		if err != nil {
+			fmt.Println("RPC call error:", err)
+		}
+		if !workerResponse.Success {
+			fmt.Println("Failed")
+		}
+	}
+}
+
 func connectToWorkers() []*rpc.Client {
 	clients := make([]*rpc.Client, stubs.Threads)
 	serverAddresses := []string{
@@ -86,42 +111,8 @@ func connectToWorkers() []*rpc.Client {
 	}
 	return clients
 }
-
-func makeWorkerCall(scale, worldWidth int, inPart []util.BitArray, client *rpc.Client, resultChannel chan []util.BitArray) {
-
-	// Perform the RPC call
-	var serverResponse stubs.WorkerResponse
-	request := stubs.WorkerRequest{
-		Scale:      scale,
-		WorldWidth: worldWidth,
-		InPart:     inPart,
-	}
-	err := client.Call(stubs.Worker, request, &serverResponse)
-	if err != nil {
-		fmt.Println("RPC call error:", err)
-	}
-
-	// Send the response through the channel
-	resultChannel <- serverResponse.OutPart
-}
-
-func killWorkersCall(clients []*rpc.Client) {
-	var serverResponse stubs.StandardServerResponse
-	for i := range clients {
-		err := clients[i].Call(stubs.KillWorker, struct{}{}, serverResponse)
-		if err != nil {
-			fmt.Println("RPC call error:", err)
-		}
-		if !serverResponse.Success {
-			fmt.Println("Failed")
-		}
-	}
-}
-
 func executeTurns(Turns int, Width int, Height int, g *GameOfLifeOperations) {
 	scale := threadScale(Height, stubs.Threads)
-	//defer mutex.Unlock()
-	//Execute all turns of the Game of Life.
 	for g.CompletedTurns < Turns && !g.halt {
 		for g.pause {
 			time.Sleep(500 * time.Millisecond) // A short pause to avoid spinning

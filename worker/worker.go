@@ -88,8 +88,6 @@ func (w *WorkerOperations) Worker(request stubs.WorkerRequest, response *stubs.W
 	return
 }
 
-//TODO set this up with the kill command
-
 func (w *WorkerOperations) KillWorker(_ struct{}, response *stubs.StandardServerResponse) (err error) {
 	done = true
 	response.Success = true
@@ -122,4 +120,5 @@ func main() {
 		}
 	}()
 	rpc.Accept(listener)
+	fmt.Println("Worker off!")
 }

@@ -1,6 +1,8 @@
 package stubs
 
-import "uk.ac.bris.cs/gameoflife/util"
+import (
+	"uk.ac.bris.cs/gameoflife/util"
+)
 
 // capital letters for exported types
 // game of life operations and processed turns
