@@ -195,8 +195,10 @@ func distributor(p Params, c distributorChannels, keyPresses <-chan rune) {
 	var serverAddress string
 	if len(os.Args) == 2 {
 		serverAddress = os.Args[1]
+		fmt.Println("#USING ARGUMENT ADDRESS")
 	} else {
 		serverAddress = "127.0.0.1:8030"
+		fmt.Println("#USING DEFAULT ADDRESS")
 	}
 	client, err := rpc.Dial("tcp", serverAddress)
 	if err != nil {

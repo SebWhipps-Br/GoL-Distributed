@@ -226,7 +226,7 @@ func main() {
 
 	if len(os.Args) == 5 {
 		copy(serverAddresses, os.Args[1:5])
-		fmt.Println("Using argument addresses")
+		fmt.Println("#USING ARGUMENT ADDRESSES")
 	} else {
 		serverAddresses = []string{
 			"127.0.0.1:8031",
@@ -234,7 +234,7 @@ func main() {
 			"127.0.0.1:8033",
 			"127.0.0.1:8034",
 		}
-		fmt.Println("Using default addresses")
+		fmt.Println("#USING DEFAULT ADDRESSES")
 	}
 
 	g.clients = connectToWorkers(serverAddresses)
