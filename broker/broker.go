@@ -89,9 +89,6 @@ func killWorkersCall(clients []*rpc.Client) {
 		if err != nil {
 			fmt.Println("RPC call error:", err)
 		}
-		if !workerResponse.Success {
-			fmt.Println("Failed")
-		}
 	}
 }
 
