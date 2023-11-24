@@ -4,8 +4,12 @@ import (
 	"uk.ac.bris.cs/gameoflife/util"
 )
 
-// capital letters for exported types
-// game of life operations and processed turns
+const (
+	Alive = true
+	Dead  = false
+)
+
+// distributor to broker
 
 var RunGameOfLife = "GameOfLifeOperations.RunGameOfLife"
 var GetAliveCount = "GameOfLifeOperations.GetAliveCount"
@@ -49,12 +53,7 @@ type PauseServerResponse struct {
 	CompletedTurns int
 }
 
-const (
-	Alive = true
-	Dead  = false
-)
-
-//////
+// broker to worker
 
 var Worker = "WorkerOperations.Worker"
 
