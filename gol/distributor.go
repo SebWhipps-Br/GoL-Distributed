@@ -51,6 +51,11 @@ func haltServer(client *rpc.Client) {
 	if err2 != nil {
 		fmt.Println(err2)
 	}
+	killServerResponse := new(stubs.StandardServerResponse)
+	err3 := client.Call(stubs.KillServer, struct{}{}, killServerResponse)
+	if err2 != nil {
+		fmt.Println(err3)
+	}
 }
 
 func handlePause(client *rpc.Client, keyPresses <-chan rune) {

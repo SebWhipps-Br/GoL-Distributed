@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"net/rpc"
+	"os"
 	"sync"
 	"time"
 	"uk.ac.bris.cs/gameoflife/stubs"
@@ -200,6 +201,13 @@ func (g *GameOfLifeOperations) HaltServer(_ struct{}, res *stubs.StandardServerR
 	return
 }
 
+func (g *GameOfLifeOperations) KillServer(_ struct{}, res *stubs.StandardServerResponse) (err error) {
+	mutex.Lock()
+	defer mutex.Unlock() //when function finished you unlock
+	os.Exit(0)
+	return
+}
+
 func (g *GameOfLifeOperations) PauseServer(req stubs.PauseServerRequest, res *stubs.PauseServerResponse) (err error) {
 	mutex.Lock()
 	g.pause = req.Pause
@@ -212,28 +220,43 @@ func main() {
 	// initialise server
 	pAddr := flag.String("port", "8030", "Port to listen on")
 	flag.Parse()
-	//rand.Seed(time.Now().UnixNano())
 	g := new(GameOfLifeOperations)
 	g.ResultChannel = make(chan Result)
 	g.halt = false
 	g.clients = connectToWorkers()
+
 	err := rpc.Register(g)
 	if err != nil {
 		fmt.Println(err)
+		return
 	}
-	listener, _ := net.Listen("tcp", ":"+*pAddr)
+	listener, err := net.Listen("tcp", ":"+*pAddr)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
 
-	go func() {
-		for {
-			if g.halt {
-				err := listener.Close()
-				if err != nil {
-					fmt.Println()
-				}
-				break
-			}
-			time.Sleep(500 * time.Millisecond)
+	defer func(listener net.Listener) {
+		err := listener.Close()
+		if err != nil {
+			fmt.Println(err)
+			return
 		}
-	}()
+	}(listener)
+	/*
+		go func() {
+			for {
+				if g.halt {
+					err := listener.Close()
+					if err != nil {
+						fmt.Println()
+					}
+					return
+				}
+				time.Sleep(500 * time.Millisecond)
+			}
+		}()
+
+	*/
 	rpc.Accept(listener)
 }

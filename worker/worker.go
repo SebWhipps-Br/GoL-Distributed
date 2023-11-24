@@ -88,10 +88,9 @@ func (w *WorkerOperations) Worker(request stubs.WorkerRequest, response *stubs.W
 	return
 }
 
-func (w *WorkerOperations) KillWorker(_ struct{}, response *stubs.StandardServerResponse) (err error) {
+func (w *WorkerOperations) KillWorker(_ struct{}, response *stubs.StandardServerResponse) error {
 	done = true
-	response.Success = true
-	return
+	return nil
 }
 
 func main() {
