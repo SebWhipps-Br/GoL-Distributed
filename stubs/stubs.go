@@ -5,8 +5,9 @@ import (
 )
 
 const (
-	Alive = true
-	Dead  = false
+	Alive   = true
+	Dead    = false
+	Threads = 4
 )
 
 // distributor to broker
@@ -41,10 +42,6 @@ type CurrentWorldResponse struct {
 	CompletedTurns int
 }
 
-type PauseServerRequest struct {
-	Pause bool
-}
-
 type PauseServerResponse struct {
 	CompletedTurns int
 }
@@ -63,5 +60,3 @@ type WorkerRequest struct {
 type WorkerResponse struct {
 	OutPart []util.BitArray
 }
-
-const Threads = 4

@@ -3,6 +3,7 @@ package gol
 import (
 	"fmt"
 	"net/rpc"
+	"os"
 	"strconv"
 	"time"
 	"uk.ac.bris.cs/gameoflife/stubs"
@@ -53,30 +54,13 @@ func haltTurns(client *rpc.Client) {
 	}
 }
 
-// handlePause blocks other key presses until it p is pressed and pauses the broker and workers
-func handlePause(client *rpc.Client, keyPresses <-chan rune) {
-	pause := true
-	var request struct{}
-	turnResponse := new(stubs.PauseServerResponse)
-
-	if err := client.Call(stubs.PauseServer, request, turnResponse); err != nil {
-		fmt.Println(err)
+// makeWorld is a way to create empty worlds (or parts of worlds)
+func makeWorld(height, width int) []util.BitArray {
+	world := make([]util.BitArray, height) //grid [i][j], [i] represents the row index, [j] represents the column index
+	for i := range world {
+		world[i] = util.NewBitArray(width)
 	}
-	fmt.Println("#PAUSED\nCompleted Turns", turnResponse.CompletedTurns)
-	for pause {
-		select {
-		case k := <-keyPresses:
-			if k == 'p' {
-				response := new(stubs.Response)
-				if err := client.Call(stubs.PauseServer, request, response); err != nil {
-					fmt.Println(err)
-				} else {
-					pause = false
-					fmt.Println("#CONTINUING")
-				}
-			}
-		}
-	}
+	return world
 }
 
 // getCurrentWorld makes an RPC call to get the last fully updated world, with the turn number of that world
@@ -97,36 +81,52 @@ func regularAliveCount(client *rpc.Client, c distributorChannels) {
 	c.events <- AliveCellsCount{CellsCount: response.AliveCellsCount, CompletedTurns: response.CompletedTurns}
 }
 
+// handlePause blocks other key presses until it p is pressed and pauses the broker and workers
+func handlePause(client *rpc.Client, keyPresses <-chan rune) {
+	pause := true
+	var empty struct{}
+	turnResponse := new(stubs.PauseServerResponse)
+
+	if err := client.Call(stubs.PauseServer, empty, turnResponse); err != nil {
+		fmt.Println(err)
+	}
+	fmt.Println("#PAUSED\nCompleted Turns", turnResponse.CompletedTurns)
+	for pause {
+		select {
+		case k := <-keyPresses:
+			if k == 'p' {
+				if err := client.Call(stubs.PauseServer, empty, &empty); err != nil {
+					fmt.Println(err)
+				} else {
+					pause = false
+					fmt.Println("#CONTINUING")
+				}
+			}
+		}
+	}
+}
+
 // handleKeyPresses takes a keypress and acts accordingly, it returns a boolean value indicting whether the program should halt
 func handleKeyPresses(key rune, keyPresses <-chan rune, p Params, c distributorChannels, client *rpc.Client, filename string) bool {
 	switch key {
-	case 's':
+	case 's': // save: outputs current world
 		worldResponse := getCurrentWorld(client)
 		outputWorld(p.ImageHeight, p.ImageWidth, worldResponse.CompletedTurns, worldResponse.World, filename, c)
-	case 'q': // ends the client program without stopping the server, must be able to be called again without failure
+	case 'q': // quit: ends the client program
 		worldResponse := getCurrentWorld(client)
 		haltTurns(client)
 		exit(p, c, worldResponse.CompletedTurns, worldResponse.World, filename)
 		return true
-	case 'k': //kill
+	case 'k': //kill: shuts down the workers, then broker, then client
 		haltClientResponse := new(struct{})
 		if err := client.Call(stubs.KillClients, struct{}{}, haltClientResponse); err != nil {
 			fmt.Println(err)
 		}
 		haltTurns(client)
-	case 'p':
+	case 'p': //pause
 		handlePause(client, keyPresses)
 	}
 	return false
-}
-
-// makeWorld is a way to create empty worlds (or parts of worlds)
-func makeWorld(height, width int) []util.BitArray {
-	world := make([]util.BitArray, height) //grid [i][j], [i] represents the row index, [j] represents the column index
-	for i := range world {
-		world[i] = util.NewBitArray(width)
-	}
-	return world
 }
 
 // exit saves the world in its current state and ensures that the program stops gracefully
@@ -192,7 +192,12 @@ func runGameOfLife(client *rpc.Client, p Params, c distributorChannels, keyPress
 
 // distributor divides the work between workers and interacts with other goroutines.
 func distributor(p Params, c distributorChannels, keyPresses <-chan rune) {
-	serverAddress := "127.0.0.1:8030"
+	var serverAddress string
+	if len(os.Args) == 2 {
+		serverAddress = os.Args[1]
+	} else {
+		serverAddress = "127.0.0.1:8030"
+	}
 	client, err := rpc.Dial("tcp", serverAddress)
 	if err != nil {
 		fmt.Println(err)

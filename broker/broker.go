@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"net/rpc"
+	"os"
 	"sync"
 	"time"
 	"uk.ac.bris.cs/gameoflife/stubs"
@@ -182,9 +183,9 @@ func (g *GameOfLifeOperations) GetAliveCount(_ struct{}, res *stubs.AliveCellsRe
 // GetCurrentWorld is an RPC method, takes no request arguments and returns the world and number of turns completed
 func (g *GameOfLifeOperations) GetCurrentWorld(_ struct{}, res *stubs.CurrentWorldResponse) (err error) {
 	mutex.Lock()
+	defer mutex.Unlock()
 	res.World = g.World
 	res.CompletedTurns = g.CompletedTurns
-	mutex.Unlock()
 	return
 }
 
@@ -207,30 +208,37 @@ func (g *GameOfLifeOperations) KillClients(_ struct{}, _ *struct{}) (err error) 
 // PauseServer toggles pausing of the execution of turns
 func (g *GameOfLifeOperations) PauseServer(_ struct{}, res *stubs.PauseServerResponse) (err error) {
 	mutex.Lock()
-	g.pause = !g.pause
+	defer mutex.Unlock()
 	res.CompletedTurns = g.CompletedTurns
-	mutex.Unlock()
+	g.pause = !g.pause
 	return
 }
 
 // main initialises the server and adds a way to kill it
 func main() {
-
 	pAddr := flag.String("port", "8030", "Port to listen on")
 	flag.Parse()
 	g := new(GameOfLifeOperations)
 	g.ResultChannel = make(chan Result)
 	g.haltTurns = false
 	g.killBroker = false
-	serverAddresses := []string{
-		"127.0.0.1:8031",
-		"127.0.0.1:8032",
-		"127.0.0.1:8033",
-		"127.0.0.1:8034",
+	serverAddresses := make([]string, 4)
+
+	if len(os.Args) == 5 {
+		copy(serverAddresses, os.Args[1:5])
+		fmt.Println("Using argument addresses")
+	} else {
+		serverAddresses = []string{
+			"127.0.0.1:8031",
+			"127.0.0.1:8032",
+			"127.0.0.1:8033",
+			"127.0.0.1:8034",
+		}
+		fmt.Println("Using default addresses")
 	}
+
 	g.clients = connectToWorkers(serverAddresses)
-	err := rpc.Register(g)
-	if err != nil {
+	if err := rpc.Register(g); err != nil {
 		fmt.Println(err)
 	}
 	listener, err2 := net.Listen("tcp", ":"+*pAddr)
