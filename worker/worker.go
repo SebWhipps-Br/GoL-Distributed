@@ -119,5 +119,4 @@ func main() {
 		}
 	}()
 	rpc.Accept(listener)
-	fmt.Println("Worker off!")
 }

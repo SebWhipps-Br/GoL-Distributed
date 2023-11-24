@@ -92,14 +92,9 @@ func killWorkersCall(clients []*rpc.Client) {
 	}
 }
 
-func connectToWorkers() []*rpc.Client {
+func connectToWorkers(serverAddresses []string) []*rpc.Client {
 	clients := make([]*rpc.Client, stubs.Threads)
-	serverAddresses := []string{
-		"127.0.0.1:8031",
-		"127.0.0.1:8032",
-		"127.0.0.1:8033",
-		"127.0.0.1:8034",
-	}
+
 	for i := range clients {
 		dial, err := rpc.Dial("tcp", serverAddresses[i])
 		clients[i] = dial
@@ -222,7 +217,13 @@ func main() {
 	g := new(GameOfLifeOperations)
 	g.ResultChannel = make(chan Result)
 	g.halt = false
-	g.clients = connectToWorkers()
+	serverAddresses := []string{
+		"127.0.0.1:8031",
+		"127.0.0.1:8032",
+		"127.0.0.1:8033",
+		"127.0.0.1:8034",
+	}
+	g.clients = connectToWorkers(serverAddresses)
 	err := rpc.Register(g)
 	if err != nil {
 		fmt.Println(err)
