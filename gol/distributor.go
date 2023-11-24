@@ -47,9 +47,9 @@ func finalAliveCount(world []util.BitArray) []util.Cell {
 
 func haltServer(client *rpc.Client) {
 	haltServerResponse := new(stubs.StandardServerResponse)
-	err2 := client.Call(stubs.HaltServer, struct{}{}, haltServerResponse)
-	if err2 != nil {
-		fmt.Println(err2)
+	err := client.Call(stubs.HaltServer, struct{}{}, haltServerResponse)
+	if err != nil {
+		fmt.Println(err)
 	}
 }
 
@@ -106,9 +106,10 @@ func handleKeyPresses(key rune, keyPresses <-chan rune, p Params, c distributorC
 		outputWorld(p.ImageHeight, p.ImageWidth, worldResponse.CompletedTurns, worldResponse.World, filename, c)
 	case 'q': // ends the client program without stopping the server, must be able to be called again without failure
 		worldResponse := getCurrentWorld(client)
+		haltServer(client)
 		exit(p, c, worldResponse.CompletedTurns, worldResponse.World, filename)
 		return true
-	case 'k':
+	case 'k': //kill
 		haltClientResponse := new(stubs.StandardServerResponse)
 		if err := client.Call(stubs.HaltClient, struct{}{}, haltClientResponse); err != nil {
 			fmt.Println(err)

@@ -27,6 +27,7 @@ type GameOfLifeOperations struct {
 	pause          bool
 	clients        []*rpc.Client
 	haltClients    bool
+	killServer     bool
 }
 
 // AliveCount counts the number of alive cells in the world, and returns this as an int
@@ -128,7 +129,7 @@ func executeTurns(Turns int, Width int, Height int, g *GameOfLifeOperations) {
 			for j := startY - 1; j < endY+1; j++ {
 				inPart = append(inPart, g.World[transformY(j, Height)])
 			}
-			//
+
 			go makeWorkerCall(scale[i], Width, inPart, g.clients[i], workerResponses[i])
 
 			startY = endY
@@ -148,6 +149,7 @@ func executeTurns(Turns int, Width int, Height int, g *GameOfLifeOperations) {
 	}
 	if g.haltClients {
 		killWorkersCall(g.clients)
+		g.killServer = true
 	}
 	result := Result{World: g.World, AliveCells: AliveCount(g.World)}
 	g.ResultChannel <- result
@@ -217,6 +219,7 @@ func main() {
 	g := new(GameOfLifeOperations)
 	g.ResultChannel = make(chan Result)
 	g.halt = false
+	g.killServer = false
 	serverAddresses := []string{
 		"127.0.0.1:8031",
 		"127.0.0.1:8032",
@@ -232,7 +235,7 @@ func main() {
 
 	go func() {
 		for {
-			if g.halt {
+			if g.killServer {
 				err := listener.Close()
 				if err != nil {
 					fmt.Println()
