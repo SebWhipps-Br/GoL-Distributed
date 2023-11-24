@@ -83,8 +83,7 @@ func handlePause(client *rpc.Client, keyPresses <-chan rune) {
 
 func getCurrentWorld(client *rpc.Client) *stubs.CurrentWorldResponse {
 	worldResponse := new(stubs.CurrentWorldResponse)
-	err := client.Call(stubs.GetCurrentWorld, struct{}{}, worldResponse)
-	if err != nil {
+	if err := client.Call(stubs.GetCurrentWorld, struct{}{}, worldResponse); err != nil {
 		fmt.Println(err)
 	}
 	return worldResponse
@@ -93,8 +92,7 @@ func getCurrentWorld(client *rpc.Client) *stubs.CurrentWorldResponse {
 // regularAliveCount makes an RPC call to the server to retrieve the alive cell count and the turn number and passes this to events
 func regularAliveCount(client *rpc.Client, c distributorChannels) {
 	response := new(stubs.AliveCellsResponse)
-	err := client.Call(stubs.GetAliveCount, struct{}{}, response)
-	if err != nil {
+	if err := client.Call(stubs.GetAliveCount, struct{}{}, response); err != nil {
 		fmt.Println(err)
 	}
 	c.events <- AliveCellsCount{CellsCount: response.AliveCellsCount, CompletedTurns: response.CompletedTurns}
@@ -112,9 +110,8 @@ func handleKeyPresses(key rune, keyPresses <-chan rune, p Params, c distributorC
 		return true
 	case 'k':
 		haltClientResponse := new(stubs.StandardServerResponse)
-		err2 := client.Call(stubs.HaltClient, struct{}{}, haltClientResponse)
-		if err2 != nil {
-			fmt.Println(err2)
+		if err := client.Call(stubs.HaltClient, struct{}{}, haltClientResponse); err != nil {
+			fmt.Println(err)
 		}
 		haltServer(client)
 	case 'p':
@@ -123,9 +120,7 @@ func handleKeyPresses(key rune, keyPresses <-chan rune, p Params, c distributorC
 	return false
 }
 
-/*
-makeWorld is a way to create empty worlds (or parts of worlds)
-*/
+// makeWorld is a way to create empty worlds (or parts of worlds)
 func makeWorld(height, width int) []util.BitArray {
 	world := make([]util.BitArray, height) //grid [i][j], [i] represents the row index, [j] represents the column index
 	for i := range world {
@@ -202,8 +197,7 @@ func distributor(p Params, c distributorChannels, keyPresses <-chan rune) {
 		fmt.Println(err)
 	}
 	defer func(client *rpc.Client) {
-		err := client.Close()
-		if err != nil {
+		if err := client.Close(); err != nil {
 			fmt.Println(err)
 		}
 	}(client)
