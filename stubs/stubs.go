@@ -14,7 +14,7 @@ const (
 var RunGameOfLife = "GameOfLifeOperations.RunGameOfLife"
 var GetAliveCount = "GameOfLifeOperations.GetAliveCount"
 var GetCurrentWorld = "GameOfLifeOperations.GetCurrentWorld"
-var HaltServer = "GameOfLifeOperations.HaltServer"
+var HaltTurns = "GameOfLifeOperations.HaltTurns"
 var PauseServer = "GameOfLifeOperations.PauseServer"
 var HaltClient = "GameOfLifeOperations.HaltClient"
 

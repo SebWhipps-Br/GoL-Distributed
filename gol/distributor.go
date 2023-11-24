@@ -47,7 +47,7 @@ func finalAliveCount(world []util.BitArray) []util.Cell {
 
 func haltServer(client *rpc.Client) {
 	haltServerResponse := new(stubs.StandardServerResponse)
-	err := client.Call(stubs.HaltServer, struct{}{}, haltServerResponse)
+	err := client.Call(stubs.HaltTurns, struct{}{}, haltServerResponse)
 	if err != nil {
 		fmt.Println(err)
 	}

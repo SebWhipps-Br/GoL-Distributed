@@ -20,14 +20,14 @@ type Result struct {
 }
 
 type GameOfLifeOperations struct {
-	World          []util.BitArray
+	World          []util.BitArray //store the current complete world, only to be accessed with the mutex
 	ResultChannel  chan Result
 	CompletedTurns int
-	halt           bool
+	haltTurns      bool
 	pause          bool
 	clients        []*rpc.Client
 	haltClients    bool
-	killServer     bool
+	killBroker     bool
 }
 
 // AliveCount counts the number of alive cells in the world, and returns this as an int
@@ -59,6 +59,7 @@ func threadScale(height, threads int) []int {
 	return scale
 }
 
+// transformY ensures that negative values wrap around to avoid index out of range, and for the game to work properly when counting neighbours
 func transformY(value, height int) int {
 	if value == -1 {
 		return height - 1
@@ -74,28 +75,25 @@ func makeWorkerCall(scale, worldWidth int, inPart []util.BitArray, client *rpc.C
 		WorldWidth: worldWidth,
 		InPart:     inPart,
 	}
-	err := client.Call(stubs.Worker, request, &workerResponse)
-	if err != nil {
+	if err := client.Call(stubs.Worker, request, &workerResponse); err != nil {
 		fmt.Println("RPC call error:", err)
 	}
-	// Send the response through the channel
 	resultChannel <- workerResponse.OutPart
 }
 
-// KillWorkersCall kills all worker clients that it is given
+// killWorkersCall kills all worker clients that it is given
 func killWorkersCall(clients []*rpc.Client) {
 	var workerResponse stubs.StandardServerResponse
 	for i := range clients {
-		err := clients[i].Call(stubs.KillWorker, struct{}{}, &workerResponse)
-		if err != nil {
+		if err := clients[i].Call(stubs.KillWorker, struct{}{}, &workerResponse); err != nil {
 			fmt.Println("RPC call error:", err)
 		}
 	}
 }
 
+// connectToWorkers returns []rpc.Client, a slice of clients that are ready for RPC calls
 func connectToWorkers(serverAddresses []string) []*rpc.Client {
 	clients := make([]*rpc.Client, stubs.Threads)
-
 	for i := range clients {
 		dial, err := rpc.Dial("tcp", serverAddresses[i])
 		clients[i] = dial
@@ -105,9 +103,11 @@ func connectToWorkers(serverAddresses []string) []*rpc.Client {
 	}
 	return clients
 }
+
+// executeTurns Carries out the turns of the game of life by calling the workers
 func executeTurns(Turns int, Width int, Height int, g *GameOfLifeOperations) {
 	scale := threadScale(Height, stubs.Threads)
-	for g.CompletedTurns < Turns && !g.halt {
+	for g.CompletedTurns < Turns && !g.haltTurns {
 		for g.pause {
 			time.Sleep(500 * time.Millisecond) // A short pause to avoid spinning
 		}
@@ -149,7 +149,7 @@ func executeTurns(Turns int, Width int, Height int, g *GameOfLifeOperations) {
 	}
 	if g.haltClients {
 		killWorkersCall(g.clients)
-		g.killServer = true
+		g.killBroker = true
 	}
 	result := Result{World: g.World, AliveCells: AliveCount(g.World)}
 	g.ResultChannel <- result
@@ -159,7 +159,7 @@ func executeTurns(Turns int, Width int, Height int, g *GameOfLifeOperations) {
 func (g *GameOfLifeOperations) RunGameOfLife(req stubs.Request, res *stubs.Response) (err error) {
 	g.CompletedTurns = 0
 	g.World = req.World
-	g.halt = false
+	g.haltTurns = false
 	g.pause = false
 	go executeTurns(req.Turns, req.ImageWidth, req.ImageHeight, g)
 	// Wait for the result from the executeTurns
@@ -179,6 +179,7 @@ func (g *GameOfLifeOperations) GetAliveCount(_ struct{}, res *stubs.AliveCellsRe
 	return
 }
 
+// GetCurrentWorld is an RPC method, takes no request arguments and returns the world and number of turns completed
 func (g *GameOfLifeOperations) GetCurrentWorld(_ struct{}, res *stubs.CurrentWorldResponse) (err error) {
 	mutex.Lock()
 	res.World = g.World
@@ -187,10 +188,11 @@ func (g *GameOfLifeOperations) GetCurrentWorld(_ struct{}, res *stubs.CurrentWor
 	return
 }
 
-func (g *GameOfLifeOperations) HaltServer(_ struct{}, res *stubs.StandardServerResponse) (err error) {
+// HaltTurns is an RPC method, it stops the execution of turns, the broker remains active
+func (g *GameOfLifeOperations) HaltTurns(_ struct{}, res *stubs.StandardServerResponse) (err error) {
 	mutex.Lock()
-	defer mutex.Unlock() //when function finished you unlock
-	g.halt = true
+	defer mutex.Unlock() //when function is finished, you unlock
+	g.haltTurns = true
 	res.Success = true
 	return
 }
@@ -218,8 +220,8 @@ func main() {
 	//rand.Seed(time.Now().UnixNano())
 	g := new(GameOfLifeOperations)
 	g.ResultChannel = make(chan Result)
-	g.halt = false
-	g.killServer = false
+	g.haltTurns = false
+	g.killBroker = false
 	serverAddresses := []string{
 		"127.0.0.1:8031",
 		"127.0.0.1:8032",
@@ -231,11 +233,14 @@ func main() {
 	if err != nil {
 		fmt.Println(err)
 	}
-	listener, _ := net.Listen("tcp", ":"+*pAddr)
+	listener, err2 := net.Listen("tcp", ":"+*pAddr)
+	if err2 != nil {
+		fmt.Println(err2)
+	}
 
 	go func() {
 		for {
-			if g.killServer {
+			if g.killBroker {
 				err := listener.Close()
 				if err != nil {
 					fmt.Println()
