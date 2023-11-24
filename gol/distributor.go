@@ -46,14 +46,6 @@ func finalAliveCount(world []util.BitArray) []util.Cell {
 	return aliveCells
 }
 
-// haltTurns stops the broker running the game of life until runGameOfLife is called again
-func haltTurns(client *rpc.Client) {
-	haltServerResponse := new(struct{})
-	if err := client.Call(stubs.HaltTurns, struct{}{}, haltServerResponse); err != nil {
-		fmt.Println(err)
-	}
-}
-
 // makeWorld is a way to create empty worlds (or parts of worlds)
 func makeWorld(height, width int) []util.BitArray {
 	world := make([]util.BitArray, height) //grid [i][j], [i] represents the row index, [j] represents the column index
@@ -79,6 +71,14 @@ func regularAliveCount(client *rpc.Client, c distributorChannels) {
 		fmt.Println(err)
 	}
 	c.events <- AliveCellsCount{CellsCount: response.AliveCellsCount, CompletedTurns: response.CompletedTurns}
+}
+
+// haltTurns stops the broker running the game of life until runGameOfLife is called again
+func haltTurns(client *rpc.Client) {
+	haltServerResponse := new(struct{})
+	if err := client.Call(stubs.HaltTurns, struct{}{}, haltServerResponse); err != nil {
+		fmt.Println(err)
+	}
 }
 
 // handlePause blocks other key presses until it p is pressed and pauses the broker and workers
