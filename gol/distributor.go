@@ -203,10 +203,12 @@ func distributor(p Params, c distributorChannels, keyPresses <-chan rune) {
 	client, err := rpc.Dial("tcp", serverAddress)
 	if err != nil {
 		fmt.Println(err)
+		return
 	}
 	defer func(client *rpc.Client) {
 		if err := client.Close(); err != nil {
 			fmt.Println(err)
+			return
 		}
 	}(client)
 	runGameOfLife(client, p, c, keyPresses)
