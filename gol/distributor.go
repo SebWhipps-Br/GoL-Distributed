@@ -111,6 +111,11 @@ func handleKeyPresses(key rune, keyPresses <-chan rune, p Params, c distributorC
 		exit(p, c, worldResponse.CompletedTurns, worldResponse.World, filename)
 		return true
 	case 'k':
+		haltClientResponse := new(stubs.StandardServerResponse)
+		err2 := client.Call(stubs.HaltClient, struct{}{}, haltClientResponse)
+		if err2 != nil {
+			fmt.Println(err2)
+		}
 		haltServer(client)
 	case 'p':
 		handlePause(client, keyPresses)

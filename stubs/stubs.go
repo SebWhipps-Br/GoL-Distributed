@@ -12,6 +12,7 @@ var GetAliveCount = "GameOfLifeOperations.GetAliveCount"
 var GetCurrentWorld = "GameOfLifeOperations.GetCurrentWorld"
 var HaltServer = "GameOfLifeOperations.HaltServer"
 var PauseServer = "GameOfLifeOperations.PauseServer"
+var HaltClient = "GameOfLifeOperations.HaltClient"
 
 type Response struct {
 	NextWorld      []util.BitArray

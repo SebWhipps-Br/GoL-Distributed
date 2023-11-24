@@ -26,6 +26,7 @@ type GameOfLifeOperations struct {
 	halt           bool
 	pause          bool
 	clients        []*rpc.Client
+	haltClients    bool
 }
 
 // AliveCount counts the number of alive cells in the world, and returns this as an int
@@ -84,7 +85,7 @@ func makeWorkerCall(scale, worldWidth int, inPart []util.BitArray, client *rpc.C
 func killWorkersCall(clients []*rpc.Client) {
 	var workerResponse stubs.StandardServerResponse
 	for i := range clients {
-		err := clients[i].Call(stubs.KillWorker, struct{}{}, workerResponse)
+		err := clients[i].Call(stubs.KillWorker, struct{}{}, &workerResponse)
 		if err != nil {
 			fmt.Println("RPC call error:", err)
 		}
@@ -153,7 +154,7 @@ func executeTurns(Turns int, Width int, Height int, g *GameOfLifeOperations) {
 		g.CompletedTurns++
 		mutex.Unlock()
 	}
-	if g.halt {
+	if g.haltClients {
 		killWorkersCall(g.clients)
 	}
 	result := Result{World: g.World, AliveCells: AliveCount(g.World)}
@@ -196,6 +197,14 @@ func (g *GameOfLifeOperations) HaltServer(_ struct{}, res *stubs.StandardServerR
 	mutex.Lock()
 	defer mutex.Unlock() //when function finished you unlock
 	g.halt = true
+	res.Success = true
+	return
+}
+
+func (g *GameOfLifeOperations) HaltClient(_ struct{}, res *stubs.StandardServerResponse) (err error) {
+	mutex.Lock()
+	defer mutex.Unlock() //when function finished you unlock
+	g.haltClients = true
 	res.Success = true
 	return
 }
