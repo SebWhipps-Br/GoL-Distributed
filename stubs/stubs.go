@@ -16,7 +16,7 @@ var GetAliveCount = "GameOfLifeOperations.GetAliveCount"
 var GetCurrentWorld = "GameOfLifeOperations.GetCurrentWorld"
 var HaltTurns = "GameOfLifeOperations.HaltTurns"
 var PauseServer = "GameOfLifeOperations.PauseServer"
-var HaltClient = "GameOfLifeOperations.HaltClient"
+var KillClients = "GameOfLifeOperations.KillClients"
 
 type Response struct {
 	NextWorld      []util.BitArray
@@ -56,7 +56,6 @@ type PauseServerResponse struct {
 // broker to worker
 
 var Worker = "WorkerOperations.Worker"
-
 var KillWorker = "WorkerOperations.KillWorker"
 
 type WorkerRequest struct {

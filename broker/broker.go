@@ -26,7 +26,7 @@ type GameOfLifeOperations struct {
 	haltTurns      bool
 	pause          bool
 	clients        []*rpc.Client
-	haltClients    bool
+	killClients    bool
 	killBroker     bool
 }
 
@@ -147,7 +147,7 @@ func executeTurns(Turns int, Width int, Height int, g *GameOfLifeOperations) {
 		g.CompletedTurns++
 		mutex.Unlock()
 	}
-	if g.haltClients {
+	if g.killClients {
 		killWorkersCall(g.clients)
 		g.killBroker = true
 	}
@@ -197,14 +197,16 @@ func (g *GameOfLifeOperations) HaltTurns(_ struct{}, res *stubs.StandardServerRe
 	return
 }
 
-func (g *GameOfLifeOperations) HaltClient(_ struct{}, res *stubs.StandardServerResponse) (err error) {
+// KillClients is an RPC method, it kills all the clients :)
+func (g *GameOfLifeOperations) KillClients(_ struct{}, res *stubs.StandardServerResponse) (err error) {
 	mutex.Lock()
 	defer mutex.Unlock() //when function finished you unlock
-	g.haltClients = true
+	g.killClients = true
 	res.Success = true
 	return
 }
 
+// PauseServer toggles pausing of the execution of turns
 func (g *GameOfLifeOperations) PauseServer(req stubs.PauseServerRequest, res *stubs.PauseServerResponse) (err error) {
 	mutex.Lock()
 	g.pause = req.Pause
@@ -213,11 +215,11 @@ func (g *GameOfLifeOperations) PauseServer(req stubs.PauseServerRequest, res *st
 	return
 }
 
+// main initialises the server and adds a way to kill it
 func main() {
-	// initialise server
+
 	pAddr := flag.String("port", "8030", "Port to listen on")
 	flag.Parse()
-	//rand.Seed(time.Now().UnixNano())
 	g := new(GameOfLifeOperations)
 	g.ResultChannel = make(chan Result)
 	g.haltTurns = false

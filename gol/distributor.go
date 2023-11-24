@@ -45,42 +45,42 @@ func finalAliveCount(world []util.BitArray) []util.Cell {
 	return aliveCells
 }
 
-func haltServer(client *rpc.Client) {
+// haltTurns stops the broker running the game of life until runGameOfLife is called again
+func haltTurns(client *rpc.Client) {
 	haltServerResponse := new(stubs.StandardServerResponse)
-	err := client.Call(stubs.HaltTurns, struct{}{}, haltServerResponse)
-	if err != nil {
+	if err := client.Call(stubs.HaltTurns, struct{}{}, haltServerResponse); err != nil {
 		fmt.Println(err)
 	}
 }
 
+// handlePause blocks other key presses until it p is pressed and pauses the broker and workers
 func handlePause(client *rpc.Client, keyPresses <-chan rune) {
 	pause := true
 	request := stubs.PauseServerRequest{Pause: true}
 	turnResponse := new(stubs.PauseServerResponse)
 
-	err := client.Call(stubs.PauseServer, request, turnResponse)
-	fmt.Println("Completed Turns when paused: ", turnResponse.CompletedTurns)
-
-	if err != nil {
+	if err := client.Call(stubs.PauseServer, request, turnResponse); err != nil {
 		fmt.Println(err)
 	}
-
+	fmt.Println("#PAUSED\nCompleted Turns", turnResponse.CompletedTurns)
 	for pause {
 		select {
 		case k := <-keyPresses:
-			pause = k != 'p'
-			request := stubs.PauseServerRequest{Pause: false}
-			response := new(stubs.Response)
-
-			err2 := client.Call(stubs.PauseServer, request, response)
-			if err2 != nil {
-				fmt.Println(err2)
+			if k == 'p' {
+				request := stubs.PauseServerRequest{Pause: false}
+				response := new(stubs.Response)
+				if err := client.Call(stubs.PauseServer, request, response); err != nil {
+					fmt.Println(err)
+				} else {
+					pause = false
+					fmt.Println("#CONTINUING")
+				}
 			}
-			fmt.Println("Continuing")
 		}
 	}
 }
 
+// getCurrentWorld makes an RPC call to get the last fully updated world, with the turn number of that world
 func getCurrentWorld(client *rpc.Client) *stubs.CurrentWorldResponse {
 	worldResponse := new(stubs.CurrentWorldResponse)
 	if err := client.Call(stubs.GetCurrentWorld, struct{}{}, worldResponse); err != nil {
@@ -106,15 +106,15 @@ func handleKeyPresses(key rune, keyPresses <-chan rune, p Params, c distributorC
 		outputWorld(p.ImageHeight, p.ImageWidth, worldResponse.CompletedTurns, worldResponse.World, filename, c)
 	case 'q': // ends the client program without stopping the server, must be able to be called again without failure
 		worldResponse := getCurrentWorld(client)
-		haltServer(client)
+		haltTurns(client)
 		exit(p, c, worldResponse.CompletedTurns, worldResponse.World, filename)
 		return true
 	case 'k': //kill
 		haltClientResponse := new(stubs.StandardServerResponse)
-		if err := client.Call(stubs.HaltClient, struct{}{}, haltClientResponse); err != nil {
+		if err := client.Call(stubs.KillClients, struct{}{}, haltClientResponse); err != nil {
 			fmt.Println(err)
 		}
-		haltServer(client)
+		haltTurns(client)
 	case 'p':
 		handlePause(client, keyPresses)
 	}
@@ -144,7 +144,8 @@ func exit(p Params, c distributorChannels, turnsCompleted int, world []util.BitA
 	close(c.events)
 }
 
-func makeCall(client *rpc.Client, p Params, c distributorChannels, keyPresses <-chan rune) {
+// runGameOfLife starts running the GoL through the broker
+func runGameOfLife(client *rpc.Client, p Params, c distributorChannels, keyPresses <-chan rune) {
 	timer := time.NewTimer(2 * time.Second)
 	done := make(chan error)
 
@@ -202,5 +203,5 @@ func distributor(p Params, c distributorChannels, keyPresses <-chan rune) {
 			fmt.Println(err)
 		}
 	}(client)
-	makeCall(client, p, c, keyPresses)
+	runGameOfLife(client, p, c, keyPresses)
 }

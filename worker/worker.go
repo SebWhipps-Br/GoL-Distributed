@@ -10,17 +10,11 @@ import (
 	"uk.ac.bris.cs/gameoflife/util"
 )
 
-var (
-	done = false
-)
-
 type WorkerOperations struct {
-	Up bool
+	done bool
 }
 
-/*
-makeWorld is a way to create empty worlds (or parts of worlds)
-*/
+// makeWorld is a way to create empty worlds (or parts of worlds)
 func makeWorld(height, width int) []util.BitArray {
 	world := make([]util.BitArray, height) //grid [i][j], [i] represents the row index, [j] represents the column index
 	for i := range world {
@@ -29,9 +23,7 @@ func makeWorld(height, width int) []util.BitArray {
 	return world
 }
 
-/*
-transformY deals with the wrap around of Y, i.e. negative values or values over the height
-*/
+// transformY deals with the wrap around of Y, i.e. negative values or values over the height
 func transformY(value, height int) int {
 	if value == -1 {
 		return height - 1
@@ -83,34 +75,34 @@ func worker(scale, worldWidth int, part []util.BitArray) []util.BitArray {
 	return outPart
 }
 
+// Worker is an RPC call that takes performs the GOL logic for part of the world
 func (w *WorkerOperations) Worker(request stubs.WorkerRequest, response *stubs.WorkerResponse) (err error) {
 	response.OutPart = worker(request.Scale, request.WorldWidth, request.InPart)
 	return
 }
 
+// KillWorker is an RPC that stops the worker running, it will only be called when Worker is not due to the nature of broker
 func (w *WorkerOperations) KillWorker(_ struct{}, _ *stubs.StandardServerResponse) error {
-	done = true
+	w.done = true
 	return nil
 }
 
+// main initialises the server & creates a way of killing through w.done
 func main() {
-	// initialise server
 	pAddr := flag.String("port", "8030", "Port to listen on")
 	flag.Parse()
-	//rand.Seed(time.Now().UnixNano())
 	w := new(WorkerOperations)
-	w.Up = true
-	err := rpc.Register(w)
+	if err := rpc.Register(w); err != nil {
+		fmt.Println(err)
+	}
+	listener, err := net.Listen("tcp", ":"+*pAddr)
 	if err != nil {
 		fmt.Println(err)
 	}
-	listener, _ := net.Listen("tcp", ":"+*pAddr)
-
 	go func() {
 		for {
-			if done {
-				err := listener.Close()
-				if err != nil {
+			if w.done {
+				if err := listener.Close(); err != nil {
 					fmt.Println()
 				}
 				break
