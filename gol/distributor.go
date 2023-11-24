@@ -47,7 +47,7 @@ func finalAliveCount(world []util.BitArray) []util.Cell {
 
 // haltTurns stops the broker running the game of life until runGameOfLife is called again
 func haltTurns(client *rpc.Client) {
-	haltServerResponse := new(stubs.StandardServerResponse)
+	haltServerResponse := new(struct{})
 	if err := client.Call(stubs.HaltTurns, struct{}{}, haltServerResponse); err != nil {
 		fmt.Println(err)
 	}
@@ -56,7 +56,7 @@ func haltTurns(client *rpc.Client) {
 // handlePause blocks other key presses until it p is pressed and pauses the broker and workers
 func handlePause(client *rpc.Client, keyPresses <-chan rune) {
 	pause := true
-	request := stubs.PauseServerRequest{Pause: true}
+	var request struct{}
 	turnResponse := new(stubs.PauseServerResponse)
 
 	if err := client.Call(stubs.PauseServer, request, turnResponse); err != nil {
@@ -67,7 +67,6 @@ func handlePause(client *rpc.Client, keyPresses <-chan rune) {
 		select {
 		case k := <-keyPresses:
 			if k == 'p' {
-				request := stubs.PauseServerRequest{Pause: false}
 				response := new(stubs.Response)
 				if err := client.Call(stubs.PauseServer, request, response); err != nil {
 					fmt.Println(err)
@@ -110,7 +109,7 @@ func handleKeyPresses(key rune, keyPresses <-chan rune, p Params, c distributorC
 		exit(p, c, worldResponse.CompletedTurns, worldResponse.World, filename)
 		return true
 	case 'k': //kill
-		haltClientResponse := new(stubs.StandardServerResponse)
+		haltClientResponse := new(struct{})
 		if err := client.Call(stubs.KillClients, struct{}{}, haltClientResponse); err != nil {
 			fmt.Println(err)
 		}

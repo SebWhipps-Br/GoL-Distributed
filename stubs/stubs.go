@@ -41,10 +41,6 @@ type CurrentWorldResponse struct {
 	CompletedTurns int
 }
 
-type StandardServerResponse struct {
-	Success bool
-}
-
 type PauseServerRequest struct {
 	Pause bool
 }

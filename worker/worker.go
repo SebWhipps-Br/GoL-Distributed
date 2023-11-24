@@ -11,7 +11,7 @@ import (
 )
 
 type WorkerOperations struct {
-	done bool
+	kill bool
 }
 
 // makeWorld is a way to create empty worlds (or parts of worlds)
@@ -50,10 +50,7 @@ func countLiveNeighbors(x, y, w int, part []util.BitArray) int {
 	return liveNeighbors
 }
 
-/*
-worker is a routine to deal with smaller parts of the world
-takes part, which is part of the world with height + 2
-*/
+// worker is a routine to deal with smaller parts of the world, takes part []util.BitArray, which is part of the world with height + 2
 func worker(scale, worldWidth int, part []util.BitArray) []util.BitArray {
 	outPart := makeWorld(scale, worldWidth)
 	for y := 1; y < len(part)-1; y++ { // row by row, skipping the overlaps
@@ -82,12 +79,12 @@ func (w *WorkerOperations) Worker(request stubs.WorkerRequest, response *stubs.W
 }
 
 // KillWorker is an RPC that stops the worker running, it will only be called when Worker is not due to the nature of broker
-func (w *WorkerOperations) KillWorker(_ struct{}, _ *stubs.StandardServerResponse) error {
-	w.done = true
+func (w *WorkerOperations) KillWorker(_ struct{}, _ *struct{}) error {
+	w.kill = true
 	return nil
 }
 
-// main initialises the server & creates a way of killing through w.done
+// main initialises the server & creates a way of killing through w.kill
 func main() {
 	pAddr := flag.String("port", "8030", "Port to listen on")
 	flag.Parse()
@@ -101,7 +98,7 @@ func main() {
 	}
 	go func() {
 		for {
-			if w.done {
+			if w.kill {
 				if err := listener.Close(); err != nil {
 					fmt.Println()
 				}

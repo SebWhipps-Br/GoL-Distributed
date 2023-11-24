@@ -83,7 +83,7 @@ func makeWorkerCall(scale, worldWidth int, inPart []util.BitArray, client *rpc.C
 
 // killWorkersCall kills all worker clients that it is given
 func killWorkersCall(clients []*rpc.Client) {
-	var workerResponse stubs.StandardServerResponse
+	var workerResponse struct{}
 	for i := range clients {
 		if err := clients[i].Call(stubs.KillWorker, struct{}{}, &workerResponse); err != nil {
 			fmt.Println("RPC call error:", err)
@@ -189,27 +189,25 @@ func (g *GameOfLifeOperations) GetCurrentWorld(_ struct{}, res *stubs.CurrentWor
 }
 
 // HaltTurns is an RPC method, it stops the execution of turns, the broker remains active
-func (g *GameOfLifeOperations) HaltTurns(_ struct{}, res *stubs.StandardServerResponse) (err error) {
+func (g *GameOfLifeOperations) HaltTurns(_ struct{}, _ *struct{}) (err error) {
 	mutex.Lock()
 	defer mutex.Unlock() //when function is finished, you unlock
 	g.haltTurns = true
-	res.Success = true
 	return
 }
 
 // KillClients is an RPC method, it kills all the clients :)
-func (g *GameOfLifeOperations) KillClients(_ struct{}, res *stubs.StandardServerResponse) (err error) {
+func (g *GameOfLifeOperations) KillClients(_ struct{}, _ *struct{}) (err error) {
 	mutex.Lock()
 	defer mutex.Unlock() //when function finished you unlock
 	g.killClients = true
-	res.Success = true
 	return
 }
 
 // PauseServer toggles pausing of the execution of turns
-func (g *GameOfLifeOperations) PauseServer(req stubs.PauseServerRequest, res *stubs.PauseServerResponse) (err error) {
+func (g *GameOfLifeOperations) PauseServer(_ struct{}, res *stubs.PauseServerResponse) (err error) {
 	mutex.Lock()
-	g.pause = req.Pause
+	g.pause = !g.pause
 	res.CompletedTurns = g.CompletedTurns
 	mutex.Unlock()
 	return
