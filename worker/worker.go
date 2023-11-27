@@ -90,44 +90,38 @@ func worker(scale, worldWidth int, part []util.BitArray, outChannel chan []util.
 
 // subDistributor is a routine to deal with smaller parts of the world, takes part []util.BitArray, which is part of the world with height + 2
 func subDistributor(scale, worldWidth int, part []util.BitArray) []util.BitArray {
-	outPart := makeWorld(scale, worldWidth)
-	//fmt.Println("1", outPart)
+	outPart := make([]util.BitArray, 0)
 	subScale := threadScale(scale, stubs.Threads)
-
 	workerChannels := make([]chan []util.BitArray, stubs.Threads) // rows
 	for i := 0; i < stubs.Threads; i++ {
 		workerChannels[i] = make(chan []util.BitArray) //2d slice  //columns
 	}
 
 	//initiates go routines
-	startY := 0 //inclusive
-	endY := 0   //exclusive
+	startY := 0
+	endY := 0
 	for i := range workerChannels {
-		endY = startY + subScale[i] //endY is exclusive
+		endY = startY + subScale[i] + 1
 		// cuts up world into parts needed for each thread
-
 		inPart := make([]util.BitArray, 0)
-		for j := startY - 1; j < endY+1; j++ {
-			inPart = append(inPart, part[transformY(j, scale)])
+		for j := startY; j < endY+1; j++ {
+			inPart = append(inPart, part[j])
 		}
-
 		go worker(subScale[i], worldWidth, inPart, workerChannels[i])
-		startY = endY
+		startY += subScale[i]
 	}
 
 	//receives response
 	for _, ch := range workerChannels {
-		outPart = append(outPart, <-ch...)
+		workerPart := <-ch
+		outPart = append(outPart, workerPart...)
 	}
-	//copy nextWorld to world
-	//fmt.Println("2", outPart)
 	return outPart
 }
 
 // Worker is an RPC call that takes performs the GOL logic for part of the world
 func (w *WorkerOperations) Worker(request stubs.WorkerRequest, response *stubs.WorkerResponse) (err error) {
 	response.OutPart = subDistributor(request.Scale, request.WorldWidth, request.InPart)
-	fmt.Println("done")
 	return
 }
 
