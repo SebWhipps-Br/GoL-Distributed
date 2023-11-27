@@ -31,6 +31,22 @@ func transformY(value, height int) int {
 	return (value + height) % height
 }
 
+// threadScale Creates an array of length threads with the scale for each thread
+func threadScale(height, threads int) []int {
+	baseNumber, remainder := height/threads, height%threads
+
+	scale := make([]int, threads)
+	for i := 0; i < threads; i++ {
+		if remainder > 0 {
+			scale[i] = baseNumber + 1
+			remainder--
+		} else {
+			scale[i] = baseNumber
+		}
+	}
+	return scale
+}
+
 // countLiveNeighbors calculates the number of live neighbors around a given cell.
 func countLiveNeighbors(x, y, w int, part []util.BitArray) int {
 	liveNeighbors := 0
@@ -50,8 +66,8 @@ func countLiveNeighbors(x, y, w int, part []util.BitArray) int {
 	return liveNeighbors
 }
 
-// worker is a routine to deal with smaller parts of the world, takes part []util.BitArray, which is part of the world with height + 2
-func worker(scale, worldWidth int, part []util.BitArray) []util.BitArray {
+// subDistributor is a routine to deal with smaller parts of the world, takes part []util.BitArray, which is part of the world with height + 2
+func worker(scale, worldWidth int, part []util.BitArray, outChannel chan []util.BitArray) {
 	outPart := makeWorld(scale, worldWidth)
 	for y := 1; y < len(part)-1; y++ { // row by row, skipping the overlaps
 		for x := 0; x < worldWidth; x++ { // each cell in row
@@ -69,16 +85,53 @@ func worker(scale, worldWidth int, part []util.BitArray) []util.BitArray {
 			}
 		}
 	}
+	outChannel <- outPart
+}
+
+// subDistributor is a routine to deal with smaller parts of the world, takes part []util.BitArray, which is part of the world with height + 2
+func subDistributor(scale, worldWidth int, part []util.BitArray) []util.BitArray {
+	outPart := makeWorld(scale, worldWidth)
+	//fmt.Println("1", outPart)
+	subScale := threadScale(scale, stubs.Threads)
+
+	workerChannels := make([]chan []util.BitArray, stubs.Threads) // rows
+	for i := 0; i < stubs.Threads; i++ {
+		workerChannels[i] = make(chan []util.BitArray) //2d slice  //columns
+	}
+
+	//initiates go routines
+	startY := 0 //inclusive
+	endY := 0   //exclusive
+	for i := range workerChannels {
+		endY = startY + subScale[i] //endY is exclusive
+		// cuts up world into parts needed for each thread
+
+		inPart := make([]util.BitArray, 0)
+		for j := startY - 1; j < endY+1; j++ {
+			inPart = append(inPart, part[transformY(j, scale)])
+		}
+
+		go worker(subScale[i], worldWidth, inPart, workerChannels[i])
+		startY = endY
+	}
+
+	//receives response
+	for _, ch := range workerChannels {
+		outPart = append(outPart, <-ch...)
+	}
+	//copy nextWorld to world
+	//fmt.Println("2", outPart)
 	return outPart
 }
 
 // Worker is an RPC call that takes performs the GOL logic for part of the world
 func (w *WorkerOperations) Worker(request stubs.WorkerRequest, response *stubs.WorkerResponse) (err error) {
-	response.OutPart = worker(request.Scale, request.WorldWidth, request.InPart)
+	response.OutPart = subDistributor(request.Scale, request.WorldWidth, request.InPart)
+	fmt.Println("done")
 	return
 }
 
-// KillWorker is an RPC that stops the worker running, it will only be called when Worker is not due to the nature of broker
+// KillWorker is an RPC that stops the subDistributor running, it will only be called when Worker is not due to the nature of broker
 func (w *WorkerOperations) KillWorker(_ struct{}, _ *struct{}) error {
 	w.kill = true
 	return nil
