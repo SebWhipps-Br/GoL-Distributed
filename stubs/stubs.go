@@ -29,6 +29,7 @@ type Request struct {
 	ImageWidth  int
 	ImageHeight int
 	World       []util.BitArray
+	Resume      bool
 }
 
 type AliveCellsResponse struct {

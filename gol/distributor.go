@@ -147,6 +147,7 @@ func exit(p Params, c distributorChannels, turnsCompleted int, world []util.BitA
 func runGameOfLife(client *rpc.Client, p Params, c distributorChannels, keyPresses <-chan rune) {
 	timer := time.NewTimer(2 * time.Second)
 	done := make(chan error)
+	resume := p.Turns == 10000000000 // if it is `run .` this is the case, (cheating a bit)
 
 	filename := strconv.Itoa(p.ImageWidth) + "x" + strconv.Itoa(p.ImageHeight)
 
@@ -165,7 +166,7 @@ func runGameOfLife(client *rpc.Client, p Params, c distributorChannels, keyPress
 	width := p.ImageWidth
 	height := p.ImageHeight
 
-	request := stubs.Request{Turns: turns, ImageWidth: width, ImageHeight: height, World: world}
+	request := stubs.Request{Turns: turns, ImageWidth: width, ImageHeight: height, World: world, Resume: resume}
 	response := new(stubs.Response)
 	go func() {
 		err := client.Call(stubs.RunGameOfLife, request, response)
