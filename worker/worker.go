@@ -103,10 +103,7 @@ func subDistributor(scale, worldWidth int, part []util.BitArray) []util.BitArray
 	for i := range workerChannels {
 		endY = startY + subScale[i] + 1
 		// cuts up world into parts needed for each thread
-		inPart := make([]util.BitArray, 0)
-		for j := startY; j < endY+1; j++ {
-			inPart = append(inPart, part[j])
-		}
+		inPart := part[startY : endY+1]
 		go worker(subScale[i], worldWidth, inPart, workerChannels[i])
 		startY += subScale[i]
 	}
