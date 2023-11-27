@@ -73,9 +73,7 @@ func worker(scale, worldWidth int, part []util.BitArray, outChannel chan []util.
 		for x := 0; x < worldWidth; x++ { // each cell in row
 			liveNeighbors := countLiveNeighbors(x, y, worldWidth, part)
 			if part[y].GetBit(x) == stubs.Alive { //apply GoL rules
-				if liveNeighbors < 2 || liveNeighbors > 3 { //less than 2 live neighbours or more than 3
-					outPart[(y-1)].SetBit(x, stubs.Dead)
-				} else {
+				if liveNeighbors >= 2 && liveNeighbors <= 3 { //less than 2 live neighbours or more than 3
 					outPart[(y-1)].SetBit(x, stubs.Alive)
 				}
 			} else { //dead

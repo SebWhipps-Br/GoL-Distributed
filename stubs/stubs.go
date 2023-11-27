@@ -6,7 +6,6 @@ import (
 
 const (
 	Alive   = true
-	Dead    = false
 	Threads = 4
 )
 
