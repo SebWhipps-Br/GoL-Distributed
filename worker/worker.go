@@ -66,7 +66,7 @@ func countLiveNeighbors(x, y, w int, part []util.BitArray) int {
 	return liveNeighbors
 }
 
-// subDistributor is a routine to deal with smaller parts of the world, takes part []util.BitArray, which is part of the world with height + 2
+// worker is a routine to deal with smaller parts of the world, takes part []util.BitArray, which is part of the world with height + 2
 func worker(scale, worldWidth int, part []util.BitArray, outChannel chan []util.BitArray) {
 	outPart := makeWorld(scale, worldWidth)
 	for y := 1; y < len(part)-1; y++ { // row by row, skipping the overlaps

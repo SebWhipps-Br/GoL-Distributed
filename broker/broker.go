@@ -157,7 +157,7 @@ func executeTurns(Turns int, Width int, Height int, g *GameOfLifeOperations) {
 }
 
 // RunGameOfLife is called to Run game of life, it must assume that it has already been called
-func (g *GameOfLifeOperations) qRunGameOfLife(req stubs.Request, res *stubs.Response) (err error) {
+func (g *GameOfLifeOperations) RunGameOfLife(req stubs.Request, res *stubs.Response) (err error) {
 	g.haltTurns = false
 	g.pause = false
 	if g.World != nil && req.Resume {
